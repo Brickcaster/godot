@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  audio_driver_wasapi.h                                               */
+/*  audio_driver_wasapi.h                                                */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -48,7 +48,6 @@ class AudioDriverWASAPI : public AudioDriver {
 	Mutex *mutex;
 	Thread *thread;
 
-	UINT32 max_frames;
 	WORD format_tag;
 	WORD bits_per_sample;
 

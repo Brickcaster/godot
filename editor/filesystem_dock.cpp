@@ -199,11 +199,33 @@ void FileSystemDock::_notification(int p_what) {
 
 			int new_mode = int(EditorSettings::get_singleton()->get("docks/filesystem/display_mode"));
 
+			//_update_icons
+
+			button_reload->set_icon(get_icon("Reload", "EditorIcons"));
+			button_favorite->set_icon(get_icon("Favorites", "EditorIcons"));
+			button_back->set_icon(get_icon("Filesystem", "EditorIcons"));
+			if (display_mode == DISPLAY_THUMBNAILS) {
+				button_display_mode->set_icon(get_icon("FileList", "EditorIcons"));
+			} else {
+				button_display_mode->set_icon(get_icon("FileThumbnail", "EditorIcons"));
+			}
+
+			search_box->add_icon_override("right_icon", get_icon("Search", "EditorIcons"));
+
+			button_hist_next->set_icon(get_icon("Forward", "EditorIcons"));
+			button_hist_prev->set_icon(get_icon("Back", "EditorIcons"));
+
+			Theme::get_default()->clear_icon("ResizedFolder", "EditorIcons");
+			Theme::get_default()->clear_icon("ResizedFile", "EditorIcons");
+
 			if (new_mode != display_mode) {
 				set_display_mode(new_mode);
 			} else {
 				_update_files(true);
 			}
+
+			_update_tree();
+
 		} break;
 	}
 }
@@ -806,7 +828,12 @@ void FileSystemDock::_move_operation(const String &p_to_path) {
 	//make list of remaps
 	Map<String, String> renames;
 	String repfrom = path == "res://" ? path : String(path + "/");
-	String repto = p_to_path == "res://" ? p_to_path : String(p_to_path + "/");
+	String repto = p_to_path;
+	if (!repto.ends_with("/")) {
+		repto += "/";
+	}
+
+	print_line("reprfrom: " + repfrom + " repto " + repto);
 
 	for (int i = 0; i < move_files.size(); i++) {
 		renames[move_files[i]] = move_files[i].replace_first(repfrom, repto);
@@ -845,6 +872,13 @@ void FileSystemDock::_move_operation(const String &p_to_path) {
 		print_line("moving file " + move_files[i] + " to " + to);
 		if (err != OK) {
 			EditorNode::get_singleton()->add_io_error(TTR("Error moving file:\n") + move_files[i] + "\n");
+		}
+		if (FileAccess::exists(move_files[i] + ".import")) { //move imported files too
+			//@todo should remove the files in .import folder
+			err = da->rename(move_files[i] + ".import", to + ".import");
+			if (err != OK) {
+				EditorNode::get_singleton()->add_io_error(TTR("Error moving file:\n") + move_files[i] + ".import\n");
+			}
 		}
 	}
 

@@ -409,7 +409,7 @@ bool CanvasItemEditor::_is_part_of_subscene(CanvasItem *p_item) {
 	return item_owner && item_owner != scene_node && p_item != scene_node && item_owner->get_filename() != "";
 }
 
-void CanvasItemEditor::_find_canvas_items_at_pos(const Point2 &p_pos, Node *p_node, const Transform2D &p_parent_xform, const Transform2D &p_canvas_xform, Vector<_SelectResult> &r_items, unsigned int limit) {
+void CanvasItemEditor::_find_canvas_items_at_pos(const Point2 &p_pos, Node *p_node, const Transform2D &p_parent_xform, const Transform2D &p_canvas_xform, Vector<_SelectResult> &r_items, int limit) {
 	if (!p_node)
 		return;
 	if (Object::cast_to<Viewport>(p_node))
@@ -1881,7 +1881,7 @@ void CanvasItemEditor::_viewport_draw() {
 	if (snap_show_grid) {
 		//Draw the grid
 		Size2 s = viewport->get_size();
-		int last_cell;
+		int last_cell = 0;
 		Transform2D xform = transform.affine_inverse();
 
 		Vector2 grid_offset;
@@ -2257,17 +2257,17 @@ void CanvasItemEditor::_notification(int p_what) {
 				anchors[MARGIN_RIGHT] = Object::cast_to<Control>(canvas_item)->get_anchor(MARGIN_RIGHT);
 				anchors[MARGIN_TOP] = Object::cast_to<Control>(canvas_item)->get_anchor(MARGIN_TOP);
 				anchors[MARGIN_BOTTOM] = Object::cast_to<Control>(canvas_item)->get_anchor(MARGIN_BOTTOM);
-			}
 
-			if (r != se->prev_rect || xform != se->prev_xform || pivot != se->prev_pivot || anchors[MARGIN_LEFT] != se->prev_anchors[MARGIN_LEFT] || anchors[MARGIN_RIGHT] != se->prev_anchors[MARGIN_RIGHT] || anchors[MARGIN_TOP] != se->prev_anchors[MARGIN_TOP] || anchors[MARGIN_BOTTOM] != se->prev_anchors[MARGIN_BOTTOM]) {
-				viewport->update();
-				se->prev_rect = r;
-				se->prev_xform = xform;
-				se->prev_pivot = pivot;
-				se->prev_anchors[MARGIN_LEFT] = anchors[MARGIN_LEFT];
-				se->prev_anchors[MARGIN_RIGHT] = anchors[MARGIN_RIGHT];
-				se->prev_anchors[MARGIN_TOP] = anchors[MARGIN_TOP];
-				se->prev_anchors[MARGIN_BOTTOM] = anchors[MARGIN_BOTTOM];
+				if (r != se->prev_rect || xform != se->prev_xform || pivot != se->prev_pivot || anchors[MARGIN_LEFT] != se->prev_anchors[MARGIN_LEFT] || anchors[MARGIN_RIGHT] != se->prev_anchors[MARGIN_RIGHT] || anchors[MARGIN_TOP] != se->prev_anchors[MARGIN_TOP] || anchors[MARGIN_BOTTOM] != se->prev_anchors[MARGIN_BOTTOM]) {
+					viewport->update();
+					se->prev_rect = r;
+					se->prev_xform = xform;
+					se->prev_pivot = pivot;
+					se->prev_anchors[MARGIN_LEFT] = anchors[MARGIN_LEFT];
+					se->prev_anchors[MARGIN_RIGHT] = anchors[MARGIN_RIGHT];
+					se->prev_anchors[MARGIN_TOP] = anchors[MARGIN_TOP];
+					se->prev_anchors[MARGIN_BOTTOM] = anchors[MARGIN_BOTTOM];
+				}
 			}
 		}
 
@@ -2320,7 +2320,6 @@ void CanvasItemEditor::_notification(int p_what) {
 		ungroup_button->set_icon(get_icon("Ungroup", "EditorIcons"));
 		key_insert_button->set_icon(get_icon("Key", "EditorIcons"));
 
-		//anchor_menu->add_icon_override("Align Top Left");
 		anchor_menu->set_icon(get_icon("Anchor", "EditorIcons"));
 		PopupMenu *p = anchor_menu->get_popup();
 
@@ -2347,6 +2346,48 @@ void CanvasItemEditor::_notification(int p_what) {
 
 		AnimationPlayerEditor::singleton->get_key_editor()->connect("visibility_changed", this, "_keying_changed");
 		_keying_changed();
+	} else if (p_what == EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED) {
+
+		select_sb->set_texture(get_icon("EditorRect2D", "EditorIcons"));
+
+		select_button->set_icon(get_icon("ToolSelect", "EditorIcons"));
+		list_select_button->set_icon(get_icon("ListSelect", "EditorIcons"));
+		move_button->set_icon(get_icon("ToolMove", "EditorIcons"));
+		rotate_button->set_icon(get_icon("ToolRotate", "EditorIcons"));
+		pan_button->set_icon(get_icon("ToolPan", "EditorIcons"));
+		pivot_button->set_icon(get_icon("EditPivot", "EditorIcons"));
+		select_handle = get_icon("EditorHandle", "EditorIcons");
+		anchor_handle = get_icon("EditorControlAnchor", "EditorIcons");
+		lock_button->set_icon(get_icon("Lock", "EditorIcons"));
+		unlock_button->set_icon(get_icon("Unlock", "EditorIcons"));
+		group_button->set_icon(get_icon("Group", "EditorIcons"));
+		ungroup_button->set_icon(get_icon("Ungroup", "EditorIcons"));
+		key_insert_button->set_icon(get_icon("Key", "EditorIcons"));
+
+		anchor_menu->set_icon(get_icon("Anchor", "EditorIcons"));
+		PopupMenu *p = anchor_menu->get_popup();
+		p->clear();
+
+		p->add_icon_item(get_icon("ControlAlignTopLeft", "EditorIcons"), "Top Left", ANCHOR_ALIGN_TOP_LEFT);
+		p->add_icon_item(get_icon("ControlAlignTopRight", "EditorIcons"), "Top Right", ANCHOR_ALIGN_TOP_RIGHT);
+		p->add_icon_item(get_icon("ControlAlignBottomRight", "EditorIcons"), "Bottom Right", ANCHOR_ALIGN_BOTTOM_RIGHT);
+		p->add_icon_item(get_icon("ControlAlignBottomLeft", "EditorIcons"), "Bottom Left", ANCHOR_ALIGN_BOTTOM_LEFT);
+		p->add_separator();
+		p->add_icon_item(get_icon("ControlAlignLeftCenter", "EditorIcons"), "Center Left", ANCHOR_ALIGN_CENTER_LEFT);
+		p->add_icon_item(get_icon("ControlAlignTopCenter", "EditorIcons"), "Center Top", ANCHOR_ALIGN_CENTER_TOP);
+		p->add_icon_item(get_icon("ControlAlignRightCenter", "EditorIcons"), "Center Right", ANCHOR_ALIGN_CENTER_RIGHT);
+		p->add_icon_item(get_icon("ControlAlignBottomCenter", "EditorIcons"), "Center Bottom", ANCHOR_ALIGN_CENTER_BOTTOM);
+		p->add_icon_item(get_icon("ControlAlignCenter", "EditorIcons"), "Center", ANCHOR_ALIGN_CENTER);
+		p->add_separator();
+		p->add_icon_item(get_icon("ControlAlignLeftWide", "EditorIcons"), "Left Wide", ANCHOR_ALIGN_LEFT_WIDE);
+		p->add_icon_item(get_icon("ControlAlignTopWide", "EditorIcons"), "Top Wide", ANCHOR_ALIGN_TOP_WIDE);
+		p->add_icon_item(get_icon("ControlAlignRightWide", "EditorIcons"), "Right Wide", ANCHOR_ALIGN_RIGHT_WIDE);
+		p->add_icon_item(get_icon("ControlAlignBottomWide", "EditorIcons"), "Bottom Wide", ANCHOR_ALIGN_BOTTOM_WIDE);
+		p->add_icon_item(get_icon("ControlVcenterWide", "EditorIcons"), "VCenter Wide ", ANCHOR_ALIGN_VCENTER_WIDE);
+		p->add_icon_item(get_icon("ControlHcenterWide", "EditorIcons"), "HCenter Wide ", ANCHOR_ALIGN_HCENTER_WIDE);
+		p->add_separator();
+		p->add_icon_item(get_icon("ControlAlignWide", "EditorIcons"), "Full Rect", ANCHOR_ALIGN_WIDE);
+		p->add_icon_item(get_icon("ControlAlignWide", "EditorIcons"), "Full Rect and Fit Parent", ANCHOR_ALIGN_WIDE_FIT);
 	}
 }
 

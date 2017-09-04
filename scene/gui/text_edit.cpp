@@ -430,7 +430,7 @@ void TextEdit::_notification(int p_what) {
 				double dist = sqrt(target_y * target_y);
 				double vel = ((target_y / dist) * v_scroll_speed) * get_fixed_process_delta_time();
 
-				if (vel >= dist) {
+				if (Math::abs(vel) >= dist) {
 					v_scroll->set_value(target_v_scroll);
 					scrolling = false;
 					set_fixed_process(false);
@@ -2113,15 +2113,15 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 
 				//keep indentation
 				int space_count = 0;
-				for (int i = 0; i < text[cursor.line].length(); i++) {
-					if (text[cursor.line][i] == '\t' && cursor.column > 0) {
+				for (int i = 0; i < cursor.column; i++) {
+					if (text[cursor.line][i] == '\t') {
 						if (indent_using_spaces) {
 							ins += space_indent;
 						} else {
 							ins += "\t";
 						}
 						space_count = 0;
-					} else if (text[cursor.line][i] == ' ' && cursor.column > 0) {
+					} else if (text[cursor.line][i] == ' ') {
 						space_count++;
 
 						if (space_count == indent_size) {
@@ -4531,7 +4531,7 @@ String TextEdit::get_word_at_pos(const Vector2 &p_pos) const {
 		bool symbol = beg < s.length() && _is_symbol(s[beg]); //not sure if right but most editors behave like this
 
 		bool inside_quotes = false;
-		int qbegin, qend;
+		int qbegin = 0, qend = 0;
 		for (int i = 0; i < s.length(); i++) {
 			if (s[i] == '"') {
 				if (inside_quotes) {

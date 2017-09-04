@@ -296,6 +296,35 @@ void EditorNode::_notification(int p_what) {
 			scene_tabs->set_min_width(0);
 		}
 		_update_scene_tabs();
+
+		//_update_icons
+		for (int i = 0; i < singleton->main_editor_buttons.size(); i++) {
+			main_editor_buttons[i]->set_icon(gui_base->get_icon(singleton->main_editor_buttons[i]->get_name(), "EditorIcons"));
+		}
+		play_button->set_icon(gui_base->get_icon("MainPlay", "EditorIcons"));
+		play_scene_button->set_icon(gui_base->get_icon("PlayScene", "EditorIcons"));
+		play_custom_scene_button->set_icon(gui_base->get_icon("PlayCustom", "EditorIcons"));
+		pause_button->set_icon(gui_base->get_icon("Pause", "EditorIcons"));
+		stop_button->set_icon(gui_base->get_icon("Stop", "EditorIcons"));
+
+		prev_scene->set_icon(gui_base->get_icon("PrevScene", "EditorIcons"));
+		distraction_free->set_icon(gui_base->get_icon("DistractionFree", "EditorIcons"));
+
+		resource_new_button->set_icon(gui_base->get_icon("New", "EditorIcons"));
+		resource_load_button->set_icon(gui_base->get_icon("Load", "EditorIcons"));
+		resource_save_button->set_icon(gui_base->get_icon("Save", "EditorIcons"));
+
+		property_back->set_icon(gui_base->get_icon("Back", "EditorIcons"));
+		property_forward->set_icon(gui_base->get_icon("Forward", "EditorIcons"));
+		editor_history_menu->set_icon(gui_base->get_icon("History", "EditorIcons"));
+
+		search_button->set_icon(gui_base->get_icon("Search", "EditorIcons"));
+		object_menu->set_icon(gui_base->get_icon("Tools", "EditorIcons"));
+		// clear_button->set_icon(gui_base->get_icon("Close", "EditorIcons")); dont have access to that node. needs to become a class property
+		update_menu->set_icon(gui_base->get_icon("Collapse", "EditorIcons"));
+		dock_tab_move_left->set_icon(theme->get_icon("Back", "EditorIcons"));
+		dock_tab_move_right->set_icon(theme->get_icon("Forward", "EditorIcons"));
+		update_menu->set_icon(gui_base->get_icon("Progress1", "EditorIcons"));
 	}
 }
 
@@ -353,20 +382,23 @@ void EditorNode::_fs_changed() {
 				continue;
 
 			if (E->get()->get_import_path() != String()) {
-				//imported resource
+//this is an imported resource, will be reloaded if reimported via the _resources_reimported() callback
+//imported resource
+#if 0
 				uint64_t mt = FileAccess::get_modified_time(E->get()->get_import_path());
 
 				if (mt != E->get()->get_import_last_modified_time()) {
 					print_line("success");
 					changed.push_back(E->get());
 				}
+#endif
+				continue;
+			}
 
-			} else {
-				uint64_t mt = FileAccess::get_modified_time(E->get()->get_path());
+			uint64_t mt = FileAccess::get_modified_time(E->get()->get_path());
 
-				if (mt != E->get()->get_last_modified_time()) {
-					changed.push_back(E->get());
-				}
+			if (mt != E->get()->get_last_modified_time()) {
+				changed.push_back(E->get());
 			}
 		}
 
@@ -379,6 +411,33 @@ void EditorNode::_fs_changed() {
 	}
 
 	_mark_unsaved_scenes();
+}
+
+void EditorNode::_resources_reimported(const Vector<String> &p_resources) {
+	print_line("reimporting");
+	List<String> scenes; //will load later
+
+	for (int i = 0; i < p_resources.size(); i++) {
+		String file_type = ResourceLoader::get_resource_type(p_resources[i]);
+		if (file_type == "PackedScene") {
+			scenes.push_back(p_resources[i]);
+			//reload later if needed, first go with normal resources
+			continue;
+		}
+
+		if (!ResourceCache::has(p_resources[i])) {
+			continue; //not loaded, no need to reload
+		}
+		//reload normally
+		Resource *resource = ResourceCache::get(p_resources[i]);
+		if (resource) {
+			resource->reload_from_file();
+		}
+	}
+
+	for (List<String>::Element *E = scenes.front(); E; E = E->next()) {
+		reload_scene(E->get());
+	}
 }
 
 void EditorNode::_sources_changed(bool p_exist) {
@@ -1314,7 +1373,7 @@ void EditorNode::_edit_current() {
 	uint32_t current = editor_history.get_current();
 	Object *current_obj = current > 0 ? ObjectDB::get_instance(current) : NULL;
 
-	property_back->set_disabled(editor_history.is_at_begining());
+	property_back->set_disabled(editor_history.is_at_beginning());
 	property_forward->set_disabled(editor_history.is_at_end());
 
 	this->current = current_obj;
@@ -2828,6 +2887,7 @@ Error EditorNode::load_scene(const String &p_scene, bool p_ignore_broken_deps, b
 
 	dependency_errors.clear();
 
+	print_line("actually loading it");
 	Error err;
 	Ref<PackedScene> sdata = ResourceLoader::load(lpath, "", true, &err);
 	if (!sdata.is_valid()) {
@@ -4150,30 +4210,25 @@ void EditorNode::_file_access_close_error_notify(const String &p_str) {
 
 void EditorNode::reload_scene(const String &p_path) {
 
-	//first of all, reload textures as they might have changed on disk
+	//first of all, reload internal textures, materials, meshes, etc. as they might have changed on disk
 
+	print_line("reloading: " + p_path);
 	List<Ref<Resource> > cached;
 	ResourceCache::get_cached_resources(&cached);
 	List<Ref<Resource> > to_clear; //clear internal resources from previous scene from being used
 	for (List<Ref<Resource> >::Element *E = cached.front(); E; E = E->next()) {
 
-		if (E->get()->get_path().begins_with(p_path + "::")) //subresources of existing scene
+		if (E->get()->get_path().find("::") != -1) {
+			print_line(E->get()->get_path());
+		}
+		if (E->get()->get_path().begins_with(p_path + "::")) { //subresources of existing scene
 			to_clear.push_back(E->get());
-
-		if (!cast_to<Texture>(E->get().ptr()))
-			continue;
-		if (!E->get()->get_path().is_resource_file() && !E->get()->get_path().is_abs_path())
-			continue;
-		if (!FileAccess::exists(E->get()->get_path()))
-			continue;
-		uint64_t mt = FileAccess::get_modified_time(E->get()->get_path());
-		if (mt != E->get()->get_last_modified_time()) {
-			E->get()->reload_from_file();
 		}
 	}
 
 	//so reload reloads everything, clear subresources of previous scene
 	while (to_clear.front()) {
+		print_line("bye bye: " + to_clear.front()->get()->get_path());
 		to_clear.front()->get()->set_path("");
 		to_clear.pop_front();
 	}
@@ -4205,7 +4260,8 @@ void EditorNode::reload_scene(const String &p_path) {
 	//remove scene
 	_remove_scene(scene_idx);
 	//reload scene
-	load_scene(p_path);
+
+	load_scene(p_path, true, false, true, true);
 	//adjust index so tab is back a the previous position
 	editor_data.move_edited_scene_to_index(scene_idx);
 	get_undo_redo()->clear_history();
@@ -4396,6 +4452,8 @@ void EditorNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_inherit_imported"), &EditorNode::_inherit_imported);
 	ClassDB::bind_method(D_METHOD("_dim_timeout"), &EditorNode::_dim_timeout);
 	ClassDB::bind_method(D_METHOD("_check_gui_base_size"), &EditorNode::_check_gui_base_size);
+
+	ClassDB::bind_method(D_METHOD("_resources_reimported"), &EditorNode::_resources_reimported);
 
 	ADD_SIGNAL(MethodInfo("play_pressed"));
 	ADD_SIGNAL(MethodInfo("pause_pressed"));
@@ -4831,7 +4889,6 @@ EditorNode::EditorNode() {
 	pm_export->set_name("Export");
 	p->add_child(pm_export);
 	p->add_submenu_item(TTR("Convert To.."), "Export");
-	pm_export->add_separator();
 	pm_export->add_shortcut(ED_SHORTCUT("editor/convert_to_MeshLibrary", TTR("MeshLibrary..")), FILE_EXPORT_MESH_LIBRARY);
 	pm_export->add_shortcut(ED_SHORTCUT("editor/convert_to_TileSet", TTR("TileSet..")), FILE_EXPORT_TILESET);
 	pm_export->connect("id_pressed", this, "_menu_option");
@@ -4949,7 +5006,7 @@ EditorNode::EditorNode() {
 	play_cc->set_margin(MARGIN_TOP, 5);
 
 	play_button_panel = memnew(PanelContainer);
-	play_button_panel->add_style_override("panel", gui_base->get_stylebox("PlayButtonPanel", "EditorStyles"));
+	// play_button_panel->add_style_override("panel", gui_base->get_stylebox("PlayButtonPanel", "EditorStyles"));
 	play_cc->add_child(play_button_panel);
 
 	HBoxContainer *play_hb = memnew(HBoxContainer);
@@ -5425,6 +5482,7 @@ EditorNode::EditorNode() {
 
 	EditorFileSystem::get_singleton()->connect("sources_changed", this, "_sources_changed");
 	EditorFileSystem::get_singleton()->connect("filesystem_changed", this, "_fs_changed");
+	EditorFileSystem::get_singleton()->connect("resources_reimported", this, "_resources_reimported");
 
 	{
 		List<StringName> tl;

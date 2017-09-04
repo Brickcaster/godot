@@ -51,9 +51,23 @@ Files extracted from upstream source:
 
 ## fonts
 
-- Upstream: ?
+### Noto Sans
 
-TODO.
+- Upstream: https://github.com/googlei18n/noto-fonts
+- Version: 1.06
+- License: OFL-1.1
+
+Use UI font if exists, because it has tight vertial metrix and good for UI.
+
+### Adobe Source Code Pro Regular
+
+- Upstream: https://github.com/adobe-fonts/source-code-pro
+- Version: 2.030
+- License: OFL-1.1
+
+### DroidSans*.ttf
+
+- Upstream: ?
 
 
 ## freetype
@@ -321,6 +335,18 @@ Files extracted from upstream source:
 - celt/ and silk/ subfolders
 - COPYING
 
+## pcre2
+
+- Upstream: http://www.pcre.org/
+- Version: 10.23
+- License: BSD-3-Clause
+
+Files extracted from upstream source:
+
+- Files listed in NON-AUTOTOOLS-BUILD steps 1-4
+- All .h files in src/
+- src/pcre2_jit_*.c and src/sljit/*
+- AUTHORS and COPYING
 
 ## pvrtccompressor
 

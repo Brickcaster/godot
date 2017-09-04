@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  project_settings.h                                                   */
+/*  project_settings_editor.h                                            */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -158,6 +158,8 @@ public:
 	static ProjectSettingsEditor *get_singleton() { return singleton; }
 	void popup_project_settings();
 	void set_plugins_page();
+
+	TabContainer *get_tabs();
 
 	void queue_save();
 

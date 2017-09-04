@@ -102,6 +102,7 @@ ShaderTypes::ShaderTypes() {
 	shader_modes[VS::SHADER_SPATIAL].functions["fragment"].built_ins["ANISOTROPY"] = ShaderLanguage::TYPE_FLOAT;
 	shader_modes[VS::SHADER_SPATIAL].functions["fragment"].built_ins["ANISOTROPY_FLOW"] = ShaderLanguage::TYPE_VEC2;
 	shader_modes[VS::SHADER_SPATIAL].functions["fragment"].built_ins["SSS_STRENGTH"] = ShaderLanguage::TYPE_FLOAT;
+	shader_modes[VS::SHADER_SPATIAL].functions["fragment"].built_ins["TRANSMISSION"] = ShaderLanguage::TYPE_VEC3;
 	shader_modes[VS::SHADER_SPATIAL].functions["fragment"].built_ins["AO"] = ShaderLanguage::TYPE_FLOAT;
 	shader_modes[VS::SHADER_SPATIAL].functions["fragment"].built_ins["EMISSION"] = ShaderLanguage::TYPE_VEC3;
 	shader_modes[VS::SHADER_SPATIAL].functions["fragment"].built_ins["SCREEN_TEXTURE"] = ShaderLanguage::TYPE_SAMPLER2D;
@@ -128,15 +129,16 @@ ShaderTypes::ShaderTypes() {
 	shader_modes[VS::SHADER_SPATIAL].modes.insert("depth_draw_never");
 	shader_modes[VS::SHADER_SPATIAL].modes.insert("depth_draw_alpha_prepass");
 
+	shader_modes[VS::SHADER_SPATIAL].modes.insert("depth_test_disable");
+
 	shader_modes[VS::SHADER_SPATIAL].modes.insert("cull_front");
 	shader_modes[VS::SHADER_SPATIAL].modes.insert("cull_back");
 	shader_modes[VS::SHADER_SPATIAL].modes.insert("cull_disabled");
 
 	shader_modes[VS::SHADER_SPATIAL].modes.insert("unshaded");
-	shader_modes[VS::SHADER_SPATIAL].modes.insert("ontop");
 
 	shader_modes[VS::SHADER_SPATIAL].modes.insert("diffuse_lambert");
-	shader_modes[VS::SHADER_SPATIAL].modes.insert("diffuse_half_lambert");
+	shader_modes[VS::SHADER_SPATIAL].modes.insert("diffuse_lambert_wrap");
 	shader_modes[VS::SHADER_SPATIAL].modes.insert("diffuse_oren_nayar");
 	shader_modes[VS::SHADER_SPATIAL].modes.insert("diffuse_burley");
 	shader_modes[VS::SHADER_SPATIAL].modes.insert("diffuse_toon");

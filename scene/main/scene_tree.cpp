@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  scene_main_loop.cpp                                                  */
+/*  scene_tree.cpp                                                       */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -542,6 +542,10 @@ bool SceneTree::idle(float p_time) {
 
 			if (env_path != String()) {
 				fallback = ResourceLoader::load(env_path);
+				if (fallback.is_null()) {
+					//could not load fallback, set as empty
+					ProjectSettings::get_singleton()->set("rendering/environment/default_environment", "");
+				}
 			} else {
 				fallback.unref();
 			}
