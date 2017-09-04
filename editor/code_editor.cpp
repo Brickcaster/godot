@@ -3,7 +3,7 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
 /* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
@@ -1036,8 +1036,9 @@ void CodeTextEditor::_complete_request() {
 	List<String> entries;
 	String ctext = text_editor->get_text_for_completion();
 	_code_complete_script(ctext, &entries);
+	bool forced = false;
 	if (code_complete_func) {
-		code_complete_func(code_complete_ud, ctext, &entries);
+		code_complete_func(code_complete_ud, ctext, &entries, forced);
 	}
 	// print_line("COMPLETE: "+p_request);
 	if (entries.size() == 0)
@@ -1050,7 +1051,7 @@ void CodeTextEditor::_complete_request() {
 		strs[i++] = E->get();
 	}
 
-	text_editor->code_complete(strs);
+	text_editor->code_complete(strs, forced);
 }
 
 void CodeTextEditor::_font_resize_timeout() {
@@ -1092,12 +1093,7 @@ void CodeTextEditor::update_editor_settings() {
 
 void CodeTextEditor::set_error(const String &p_error) {
 
-	if (p_error != "") {
-		error->set_text(p_error);
-		error->show();
-	} else {
-		error->hide();
-	}
+	error->set_text(p_error);
 }
 
 void CodeTextEditor::_update_font() {
@@ -1222,12 +1218,10 @@ CodeTextEditor::CodeTextEditor() {
 
 	error = memnew(Label);
 	status_bar->add_child(error);
-	error->hide();
 	error->set_clip_text(true); //do not change, or else very long errors can push the whole container to the right
 	error->set_valign(Label::VALIGN_CENTER);
 	error->add_color_override("font_color", Color(1, 0.7, 0.6, 0.9));
 	error->set_h_size_flags(SIZE_EXPAND_FILL); //required for it to display, given now it's clipping contents, do not touch
-	//status_bar->add_spacer();
 
 	Label *line_txt = memnew(Label);
 	status_bar->add_child(line_txt);
@@ -1267,6 +1261,7 @@ CodeTextEditor::CodeTextEditor() {
 	cs.push_back(".");
 	cs.push_back(",");
 	cs.push_back("(");
+	cs.push_back("=");
 	cs.push_back("$");
 	text_editor->set_completion(true, cs);
 	idle->connect("timeout", this, "_text_changed_idle_timeout");

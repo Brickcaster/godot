@@ -3,7 +3,7 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
 /* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
@@ -239,7 +239,7 @@ Error ResourceInteractiveLoaderText::poll() {
 				return error;
 			}
 
-			Resource *r = obj->cast_to<Resource>();
+			Resource *r = Object::cast_to<Resource>(obj);
 			if (!r) {
 
 				error_text += "Can't create sub resource of type, because not a resource: " + type;
@@ -305,7 +305,7 @@ Error ResourceInteractiveLoaderText::poll() {
 			return error;
 		}
 
-		Resource *r = obj->cast_to<Resource>();
+		Resource *r = Object::cast_to<Resource>(obj);
 		if (!r) {
 
 			error_text += "Can't create sub resource of type, because not a resource: " + res_type;

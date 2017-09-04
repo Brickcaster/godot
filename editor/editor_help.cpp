@@ -3,7 +3,7 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
 /* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
@@ -294,7 +294,6 @@ EditorHelpSearch::EditorHelpSearch() {
 	VBoxContainer *vbc = memnew(VBoxContainer);
 	add_child(vbc);
 
-	HBoxContainer *sb_hb = memnew(HBoxContainer);
 	search_box = memnew(LineEdit);
 	vbc->add_child(search_box);
 	search_box->connect("text_changed", this, "_text_changed");
@@ -531,49 +530,6 @@ void EditorHelp::_search(const String &) {
 	prev_search = stext;
 }
 
-#if 0
-void EditorHelp::_button_pressed(int p_idx) {
-
-	if (p_idx==PAGE_CLASS_LIST) {
-
-		//edited_class->set_pressed(false);
-		//class_list_button->set_pressed(true);
-		//tabs->set_current_tab(PAGE_CLASS_LIST);
-
-	} else if (p_idx==PAGE_CLASS_DESC) {
-
-		//edited_class->set_pressed(true);
-		//class_list_button->set_pressed(false);
-		//tabs->set_current_tab(PAGE_CLASS_DESC);
-
-	} else if (p_idx==PAGE_CLASS_PREV) {
-
-		if (history_pos<2)
-			return;
-		history_pos--;
-		ERR_FAIL_INDEX(history_pos-1,history.size());
-		_goto_desc(history[history_pos-1].c,false,history[history_pos-1].scroll);
-		_update_history_buttons();
-
-
-	} else if (p_idx==PAGE_CLASS_NEXT) {
-
-		if (history_pos>=history.size())
-			return;
-
-		history_pos++;
-		ERR_FAIL_INDEX(history_pos-1,history.size());
-		_goto_desc(history[history_pos-1].c,false,history[history_pos-1].scroll);
-		_update_history_buttons();
-
-	} else if (p_idx==PAGE_SEARCH) {
-
-		_search("");
-	}
-}
-
-#endif
-
 void EditorHelp::_class_list_select(const String &p_select) {
 
 	_goto_desc(p_select);
@@ -582,7 +538,18 @@ void EditorHelp::_class_list_select(const String &p_select) {
 void EditorHelp::_class_desc_select(const String &p_select) {
 
 	//print_line("LINK: "+p_select);
-	if (p_select.begins_with("#")) {
+	if (p_select.begins_with("$")) { //enum
+		//_goto_desc(p_select.substr(1,p_select.length()));
+		String select = p_select.substr(1, p_select.length());
+		String class_name;
+		if (select.find(".") != -1) {
+			class_name = select.get_slice(".", 0);
+		} else {
+			class_name = "@Global Scope";
+		}
+		emit_signal("go_to_help", "class_enum:" + class_name + ":" + select);
+		return;
+	} else if (p_select.begins_with("#")) {
 		//_goto_desc(p_select.substr(1,p_select.length()));
 		emit_signal("go_to_help", "class_name:" + p_select.substr(1, p_select.length()));
 		return;
@@ -614,31 +581,32 @@ void EditorHelp::_class_desc_input(const Ref<InputEvent> &p_input) {
 	set_focused();
 }
 
-void EditorHelp::_add_type(const String &p_type) {
+void EditorHelp::_add_type(const String &p_type, const String &p_enum) {
 
 	String t = p_type;
 	if (t == "")
 		t = "void";
-	bool can_ref = (t != "int" && t != "real" && t != "bool" && t != "void");
+	bool can_ref = (t != "int" && t != "real" && t != "bool" && t != "void") || p_enum != String();
 
+	if (p_enum != String()) {
+		if (p_enum.get_slice_count(".") > 1) {
+			t = p_enum.get_slice(".", 1);
+		} else {
+			t = p_enum.get_slice(".", 0);
+		}
+	}
 	class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/base_type_color"));
-	if (can_ref)
-		class_desc->push_meta("#" + t); //class
+	if (can_ref) {
+		if (p_enum == "") {
+			class_desc->push_meta("#" + t); //class
+		} else {
+			class_desc->push_meta("$" + p_enum); //class
+		}
+	}
 	class_desc->add_text(t);
 	if (can_ref)
 		class_desc->pop();
 	class_desc->pop();
-}
-
-void EditorHelp::_scroll_changed(double p_scroll) {
-
-	if (scroll_locked)
-		return;
-
-	if (!class_desc->get_v_scroll()->is_visible())
-		p_scroll = 0;
-
-	//history[p].scroll=p_scroll;
 }
 
 Error EditorHelp::_goto_desc(const String &p_class, int p_vscr) {
@@ -793,7 +761,7 @@ Error EditorHelp::_goto_desc(const String &p_class, int p_vscr) {
 			class_desc->push_cell();
 			class_desc->push_align(RichTextLabel::ALIGN_RIGHT);
 			class_desc->push_font(doc_code_font);
-			_add_type(cd.properties[i].type);
+			_add_type(cd.properties[i].type, cd.properties[i].enumeration);
 			class_desc->add_text(" ");
 			class_desc->pop();
 			class_desc->pop();
@@ -881,12 +849,14 @@ Error EditorHelp::_goto_desc(const String &p_class, int p_vscr) {
 
 		for (int i = 0; i < methods.size(); i++) {
 
+			bool is_vararg = methods[i].qualifiers.find("vararg") != -1;
+
 			class_desc->push_cell();
 
 			method_line[methods[i].name] = class_desc->get_line_count() - 2; //gets overridden if description
 			class_desc->push_align(RichTextLabel::ALIGN_RIGHT);
 			class_desc->push_font(doc_code_font);
-			_add_type(methods[i].return_type);
+			_add_type(methods[i].return_type, methods[i].return_enum);
 			//class_desc->add_text(" ");
 			class_desc->pop(); //align
 			class_desc->pop(); //font
@@ -904,13 +874,13 @@ Error EditorHelp::_goto_desc(const String &p_class, int p_vscr) {
 			if (methods[i].description != "")
 				class_desc->pop();
 			class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/symbol_color"));
-			class_desc->add_text(methods[i].arguments.size() ? "( " : "(");
+			class_desc->add_text(methods[i].arguments.size() || is_vararg ? "( " : "(");
 			class_desc->pop();
 			for (int j = 0; j < methods[i].arguments.size(); j++) {
 				class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/text_color"));
 				if (j > 0)
 					class_desc->add_text(", ");
-				_add_type(methods[i].arguments[j].type);
+				_add_type(methods[i].arguments[j].type, methods[i].arguments[j].enumeration);
 				class_desc->add_text(" ");
 				_add_text(methods[i].arguments[j].name);
 				if (methods[i].arguments[j].default_value != "") {
@@ -924,17 +894,18 @@ Error EditorHelp::_goto_desc(const String &p_class, int p_vscr) {
 				class_desc->pop();
 			}
 
-			if (methods[i].qualifiers.find("vararg") != -1) {
+			if (is_vararg) {
 				class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/text_color"));
-				class_desc->add_text(",");
+				if (methods[i].arguments.size())
+					class_desc->add_text(", ");
 				class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/symbol_color"));
-				class_desc->add_text(" ... ");
+				class_desc->add_text("...");
 				class_desc->pop();
 				class_desc->pop();
 			}
 
 			class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/symbol_color"));
-			class_desc->add_text(methods[i].arguments.size() ? " )" : ")");
+			class_desc->add_text(methods[i].arguments.size() || is_vararg ? " )" : ")");
 			class_desc->pop();
 			if (methods[i].qualifiers != "") {
 
@@ -1059,44 +1030,133 @@ Error EditorHelp::_goto_desc(const String &p_class, int p_vscr) {
 
 	if (cd.constants.size()) {
 
-		class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/keyword_color"));
-		class_desc->push_font(doc_title_font);
-		class_desc->add_text(TTR("Constants:"));
-		class_desc->pop();
-		class_desc->pop();
-		class_desc->push_indent(1);
-
-		class_desc->add_newline();
-		//class_desc->add_newline();
+		Map<String, Vector<DocData::ConstantDoc> > enums;
+		Vector<DocData::ConstantDoc> constants;
 
 		for (int i = 0; i < cd.constants.size(); i++) {
 
-			constant_line[cd.constants[i].name] = class_desc->get_line_count() - 2;
-			class_desc->push_font(doc_code_font);
-			class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/base_type_color"));
-			_add_text(cd.constants[i].name);
-			class_desc->pop();
-			class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/symbol_color"));
-			class_desc->add_text(" = ");
-			class_desc->pop();
+			if (cd.constants[i].enumeration != String()) {
+				if (!enums.has(cd.constants[i].enumeration)) {
+					enums[cd.constants[i].enumeration] = Vector<DocData::ConstantDoc>();
+				}
+
+				enums[cd.constants[i].enumeration].push_back(cd.constants[i]);
+			} else {
+
+				constants.push_back(cd.constants[i]);
+			}
+		}
+
+		if (enums.size()) {
+
 			class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/keyword_color"));
-			_add_text(cd.constants[i].value);
+			class_desc->push_font(doc_title_font);
+			class_desc->add_text(TTR("Enumerations:"));
 			class_desc->pop();
 			class_desc->pop();
-			if (cd.constants[i].description != "") {
-				class_desc->push_font(doc_font);
-				class_desc->add_text("  ");
-				class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/comment_color"));
-				_add_text(cd.constants[i].description);
+			class_desc->push_indent(1);
+
+			class_desc->add_newline();
+			//class_desc->add_newline();
+
+			for (Map<String, Vector<DocData::ConstantDoc> >::Element *E = enums.front(); E; E = E->next()) {
+
+				enum_line[E->key()] = class_desc->get_line_count() - 2;
+
+				class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/keyword_color"));
+				class_desc->add_text(TTR("enum  "));
 				class_desc->pop();
+				class_desc->push_font(doc_code_font);
+				String e = E->key();
+				if (e.get_slice_count(".")) {
+					e = e.get_slice(".", 1);
+				}
+
+				class_desc->add_text(e);
 				class_desc->pop();
+				class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/keyword_color"));
+				class_desc->add_text(":");
+				class_desc->pop();
+				class_desc->add_newline();
+
+				class_desc->push_indent(1);
+				Vector<DocData::ConstantDoc> enum_list = E->get();
+
+				for (int i = 0; i < enum_list.size(); i++) {
+
+					class_desc->push_font(doc_code_font);
+					class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/base_type_color"));
+					_add_text(enum_list[i].name);
+					class_desc->pop();
+					class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/symbol_color"));
+					class_desc->add_text(" = ");
+					class_desc->pop();
+					class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/keyword_color"));
+					_add_text(enum_list[i].value);
+					class_desc->pop();
+					class_desc->pop();
+					if (enum_list[i].description != "") {
+						class_desc->push_font(doc_font);
+						class_desc->add_text("  ");
+						class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/comment_color"));
+						_add_text(enum_list[i].description);
+						class_desc->pop();
+						class_desc->pop();
+					}
+
+					class_desc->add_newline();
+				}
+
+				class_desc->pop();
+
+				class_desc->add_newline();
 			}
 
+			class_desc->pop();
 			class_desc->add_newline();
 		}
 
-		class_desc->pop();
-		class_desc->add_newline();
+		if (constants.size()) {
+
+			class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/keyword_color"));
+			class_desc->push_font(doc_title_font);
+			class_desc->add_text(TTR("Constants:"));
+			class_desc->pop();
+			class_desc->pop();
+			class_desc->push_indent(1);
+
+			class_desc->add_newline();
+			//class_desc->add_newline();
+
+			for (int i = 0; i < constants.size(); i++) {
+
+				constant_line[constants[i].name] = class_desc->get_line_count() - 2;
+				class_desc->push_font(doc_code_font);
+				class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/base_type_color"));
+				_add_text(constants[i].name);
+				class_desc->pop();
+				class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/symbol_color"));
+				class_desc->add_text(" = ");
+				class_desc->pop();
+				class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/keyword_color"));
+				_add_text(constants[i].value);
+				class_desc->pop();
+				class_desc->pop();
+				if (constants[i].description != "") {
+					class_desc->push_font(doc_font);
+					class_desc->add_text("  ");
+					class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/comment_color"));
+					_add_text(constants[i].description);
+					class_desc->pop();
+					class_desc->pop();
+				}
+
+				class_desc->add_newline();
+			}
+
+			class_desc->pop();
+			class_desc->add_newline();
+		}
 	}
 
 	if (cd.description != "") {
@@ -1137,7 +1197,7 @@ Error EditorHelp::_goto_desc(const String &p_class, int p_vscr) {
 			method_line[cd.properties[i].name] = class_desc->get_line_count() - 2;
 
 			class_desc->push_font(doc_code_font);
-			_add_type(cd.properties[i].type);
+			_add_type(cd.properties[i].type, cd.properties[i].enumeration);
 
 			class_desc->add_text(" ");
 			class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/text_color"));
@@ -1212,23 +1272,25 @@ Error EditorHelp::_goto_desc(const String &p_class, int p_vscr) {
 
 		for (int i = 0; i < methods.size(); i++) {
 
+			bool is_vararg = methods[i].qualifiers.find("vararg") != -1;
+
 			method_line[methods[i].name] = class_desc->get_line_count() - 2;
 
 			class_desc->push_font(doc_code_font);
-			_add_type(methods[i].return_type);
+			_add_type(methods[i].return_type, methods[i].return_enum);
 
 			class_desc->add_text(" ");
 			class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/text_color"));
 			_add_text(methods[i].name);
 			class_desc->pop();
 			class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/symbol_color"));
-			class_desc->add_text(methods[i].arguments.size() ? "( " : "(");
+			class_desc->add_text(methods[i].arguments.size() || is_vararg ? "( " : "(");
 			class_desc->pop();
 			for (int j = 0; j < methods[i].arguments.size(); j++) {
 				class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/text_color"));
 				if (j > 0)
 					class_desc->add_text(", ");
-				_add_type(methods[i].arguments[j].type);
+				_add_type(methods[i].arguments[j].type, methods[i].arguments[j].enumeration);
 				class_desc->add_text(" ");
 				_add_text(methods[i].arguments[j].name);
 				if (methods[i].arguments[j].default_value != "") {
@@ -1242,8 +1304,18 @@ Error EditorHelp::_goto_desc(const String &p_class, int p_vscr) {
 				class_desc->pop();
 			}
 
+			if (is_vararg) {
+				class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/text_color"));
+				if (methods[i].arguments.size())
+					class_desc->add_text(", ");
+				class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/symbol_color"));
+				class_desc->add_text("...");
+				class_desc->pop();
+				class_desc->pop();
+			}
+
 			class_desc->push_color(EditorSettings::get_singleton()->get("text_editor/highlighting/symbol_color"));
-			class_desc->add_text(methods[i].arguments.size() ? " )" : ")");
+			class_desc->add_text(methods[i].arguments.size() || is_vararg ? " )" : ")");
 			class_desc->pop();
 			if (methods[i].qualifiers != "") {
 
@@ -1306,6 +1378,11 @@ void EditorHelp::_help_callback(const String &p_topic) {
 
 		if (property_line.has(name))
 			line = property_line[name];
+	} else if (what == "class_enum") {
+
+		print_line("go to enum:");
+		if (enum_line.has(name))
+			line = enum_line[name];
 	} else if (what == "class_theme_item") {
 
 		if (theme_property_line.has(name))
@@ -1681,7 +1758,6 @@ void EditorHelp::_bind_methods() {
 	ClassDB::bind_method("_class_desc_select", &EditorHelp::_class_desc_select);
 	ClassDB::bind_method("_class_desc_input", &EditorHelp::_class_desc_input);
 	//ClassDB::bind_method("_button_pressed",&EditorHelp::_button_pressed);
-	ClassDB::bind_method("_scroll_changed", &EditorHelp::_scroll_changed);
 	ClassDB::bind_method("_request_help", &EditorHelp::_request_help);
 	ClassDB::bind_method("_unhandled_key_input", &EditorHelp::_unhandled_key_input);
 	ClassDB::bind_method("_search", &EditorHelp::_search);
@@ -1714,7 +1790,6 @@ EditorHelp::EditorHelp() {
 		class_desc->connect("gui_input", this, "_class_desc_input");
 	}
 
-	class_desc->get_v_scroll()->connect("value_changed", this, "_scroll_changed");
 	class_desc->set_selection_enabled(true);
 
 	scroll_locked = false;
@@ -1756,8 +1831,20 @@ void EditorHelpBit::_go_to_help(String p_what) {
 
 void EditorHelpBit::_meta_clicked(String p_select) {
 
+	print_line("got meta " + p_select);
 	//print_line("LINK: "+p_select);
-	if (p_select.begins_with("#")) {
+	if (p_select.begins_with("$")) { //enum
+		//_goto_desc(p_select.substr(1,p_select.length()));
+		String select = p_select.substr(1, p_select.length());
+		String class_name;
+		if (select.find(".") != -1) {
+			class_name = select.get_slice(".", 0);
+		} else {
+			class_name = "@Global";
+		}
+		_go_to_help("class_enum:" + class_name + ":" + select);
+		return;
+	} else if (p_select.begins_with("#")) {
 		//_goto_desc(p_select.substr(1,p_select.length()));
 		_go_to_help("class_name:" + p_select.substr(1, p_select.length()));
 		return;

@@ -3,7 +3,7 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
 /* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
@@ -45,11 +45,6 @@
 #endif
 
 #ifdef DEBUG_METHODS_ENABLED
-
-ParamDef::ParamDef(const Variant &p_variant)
-	: used(true),
-	  val(p_variant) {
-}
 
 MethodDefinition D_METHOD(const char *p_name) {
 
@@ -538,11 +533,10 @@ void ClassDB::get_method_list(StringName p_class, List<MethodInfo> *p_methods, b
 				minfo.arguments.push_back(method->get_argument_info(i));
 			}
 
-			if (method->get_argument_type(-1) != Variant::NIL) {
-				minfo.return_val = method->get_argument_info(-1);
-			}
-
+			minfo.return_val = method->get_return_info();
 			minfo.flags = method->get_hint_flags();
+			minfo.default_arguments = method->get_default_arguments();
+
 			p_methods->push_back(minfo);
 		}
 
@@ -600,14 +594,22 @@ void ClassDB::bind_integer_constant(const StringName &p_class, const StringName 
 
 	type->constant_map[p_name] = p_constant;
 #ifdef DEBUG_METHODS_ENABLED
-	List<StringName> *constants_list = type->enum_map.getptr(p_enum);
 
-	if (constants_list) {
-		constants_list->push_back(p_name);
-	} else {
-		List<StringName> new_list;
-		new_list.push_back(p_name);
-		type->enum_map[p_enum] = new_list;
+	String enum_name = p_enum;
+	if (enum_name != String()) {
+		if (enum_name.find(".") != -1) {
+			enum_name = enum_name.get_slicec('.', 1);
+		}
+
+		List<StringName> *constants_list = type->enum_map.getptr(enum_name);
+
+		if (constants_list) {
+			constants_list->push_back(p_name);
+		} else {
+			List<StringName> new_list;
+			new_list.push_back(p_name);
+			type->enum_map[enum_name] = new_list;
+		}
 	}
 
 	type->constant_order.push_back(p_name);
@@ -680,7 +682,7 @@ StringName ClassDB::get_integer_constant_enum(const StringName &p_class, const S
 			List<StringName> &constants_list = type->enum_map.get(*k);
 			const List<StringName>::Element *found = constants_list.find(p_name);
 			if (found)
-				return found->get();
+				return *k;
 		}
 
 		if (p_no_inheritance)
@@ -858,7 +860,7 @@ void ClassDB::add_property(StringName p_class, const PropertyInfo &p_pinfo, cons
 	MethodBind *mb_get = NULL;
 	if (p_getter) {
 
-		MethodBind *mb_get = get_method(p_class, p_getter);
+		mb_get = get_method(p_class, p_getter);
 #ifdef DEBUG_METHODS_ENABLED
 
 		if (!mb_get) {

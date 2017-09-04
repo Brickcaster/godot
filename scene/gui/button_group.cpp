@@ -3,7 +3,7 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
 /* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
@@ -56,7 +56,7 @@ void ButtonGroup::set_pressed_button(BaseButton *p_button) {
 void ButtonGroup::_pressed(Object *p_button) {
 
 	ERR_FAIL_NULL(p_button);
-	BaseButton *b=p_button->cast_to<BaseButton>();
+	BaseButton *b=Object::cast_to<BaseButton>(p_button);
 	ERR_FAIL_COND(!b);
 
 	for(Set<BaseButton*>::Element *E=buttons.front();E;E=E->next()) {

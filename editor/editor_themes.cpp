@@ -3,7 +3,7 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
 /* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
@@ -93,8 +93,11 @@ Ref<ImageTexture> editor_generate_icon(int p_index, bool dark_theme = true) {
 	Ref<ImageTexture> icon = memnew(ImageTexture);
 	Ref<Image> img = memnew(Image);
 
+	// dumb gizmo check
+	bool is_gizmo = String(editor_icons_names[p_index]).begins_with("Gizmo");
+
 	ImageLoaderSVG::create_image_from_string(img, dark_theme ? editor_icons_sources[p_index] : editor_icons_sources_dark[p_index], EDSCALE, true);
-	if ((EDSCALE - (float)((int)EDSCALE)) > 0.0)
+	if ((EDSCALE - (float)((int)EDSCALE)) > 0.0 || is_gizmo)
 		icon->create_from_image(img); // in this case filter really helps
 	else
 		icon->create_from_image(img, 0);
@@ -411,6 +414,8 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	theme->set_stylebox("SceneTabFG", "EditorStyles", make_flat_stylebox(title_color_hl, 10, 5, 10, 5));
 	theme->set_stylebox("SceneTabBG", "EditorStyles", make_empty_stylebox(6, 5, 6, 5));
 	theme->set_icon("close", "Tabs", theme->get_icon("GuiClose", "EditorIcons"));
+	theme->set_stylebox("button_pressed", "Tabs", style_menu);
+	theme->set_stylebox("button", "Tabs", style_menu);
 
 	// Separators (no separators)
 	theme->set_stylebox("separator", "HSeparator", make_line_stylebox(separator_color, border_width));

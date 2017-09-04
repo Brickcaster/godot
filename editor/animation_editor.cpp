@@ -3,7 +3,7 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
 /* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
@@ -38,6 +38,7 @@
 #include "pair.h"
 #include "scene/gui/separator.h"
 #include "scene/main/viewport.h"
+
 /* Missing to fix:
 
   *Set
@@ -1646,7 +1647,7 @@ PropertyInfo AnimationKeyEditor::_find_hint_for_track(int p_idx, NodePath &r_bas
 	List<PropertyInfo> pinfo;
 	if (res.is_valid())
 		res->get_property_list(&pinfo);
-	else
+	else if (node)
 		node->get_property_list(&pinfo);
 
 	for (List<PropertyInfo>::Element *E = pinfo.front(); E; E = E->next()) {
@@ -2684,17 +2685,6 @@ void AnimationKeyEditor::_track_editor_gui_input(const Ref<InputEvent> &p_input)
 			Point2 mpos = mm->get_position() - ofs;
 
 			if (mpos.y < h) {
-#if 0
-				//seek
-				//int zoomw = settings_limit-name_limit;
-				float scale = _get_zoom_scale();
-				float pos = h_scroll->get_val() + (mpos.y-name_limit) / scale;
-				if (pos<0 )
-					pos=0;
-				if (pos>=animation->get_length())
-					pos=animation->get_length();
-				timeline->set_val(pos);
-#endif
 				return;
 			}
 
@@ -3249,9 +3239,9 @@ void AnimationKeyEditor::insert_value_key(const String &p_property, const Varian
 	//let's build a node path
 	ERR_FAIL_COND(history->get_path_size() == 0);
 	Object *obj = ObjectDB::get_instance(history->get_path_object(0));
-	ERR_FAIL_COND(!obj || !obj->cast_to<Node>());
+	ERR_FAIL_COND(!Object::cast_to<Node>(obj));
 
-	Node *node = obj->cast_to<Node>();
+	Node *node = Object::cast_to<Node>(obj);
 
 	String path = root->get_path_to(node);
 

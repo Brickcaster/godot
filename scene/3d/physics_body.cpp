@@ -3,7 +3,7 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
 /* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
@@ -116,7 +116,7 @@ bool PhysicsBody::get_collision_layer_bit(int p_bit) const {
 void PhysicsBody::add_collision_exception_with(Node *p_node) {
 
 	ERR_FAIL_NULL(p_node);
-	PhysicsBody *physics_body = p_node->cast_to<PhysicsBody>();
+	PhysicsBody *physics_body = Object::cast_to<PhysicsBody>(p_node);
 	if (!physics_body) {
 		ERR_EXPLAIN("Collision exception only works between two objects of PhysicsBody type");
 	}
@@ -127,7 +127,7 @@ void PhysicsBody::add_collision_exception_with(Node *p_node) {
 void PhysicsBody::remove_collision_exception_with(Node *p_node) {
 
 	ERR_FAIL_NULL(p_node);
-	PhysicsBody *physics_body = p_node->cast_to<PhysicsBody>();
+	PhysicsBody *physics_body = Object::cast_to<PhysicsBody>(p_node);
 	if (!physics_body) {
 		ERR_EXPLAIN("Collision exception only works between two objects of PhysicsBody type");
 	}
@@ -254,7 +254,7 @@ StaticBody::~StaticBody() {
 void RigidBody::_body_enter_tree(ObjectID p_id) {
 
 	Object *obj = ObjectDB::get_instance(p_id);
-	Node *node = obj ? obj->cast_to<Node>() : NULL;
+	Node *node = Object::cast_to<Node>(obj);
 	ERR_FAIL_COND(!node);
 
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(p_id);
@@ -278,7 +278,7 @@ void RigidBody::_body_enter_tree(ObjectID p_id) {
 void RigidBody::_body_exit_tree(ObjectID p_id) {
 
 	Object *obj = ObjectDB::get_instance(p_id);
-	Node *node = obj ? obj->cast_to<Node>() : NULL;
+	Node *node = Object::cast_to<Node>(obj);
 	ERR_FAIL_COND(!node);
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(p_id);
 	ERR_FAIL_COND(!E);
@@ -303,7 +303,7 @@ void RigidBody::_body_inout(int p_status, ObjectID p_instance, int p_body_shape,
 	ObjectID objid = p_instance;
 
 	Object *obj = ObjectDB::get_instance(objid);
-	Node *node = obj ? obj->cast_to<Node>() : NULL;
+	Node *node = Object::cast_to<Node>(obj);
 
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(objid);
 
@@ -369,7 +369,7 @@ void RigidBody::_direct_state_changed(Object *p_state) {
 //eh.. fuck
 #ifdef DEBUG_ENABLED
 
-	state = p_state->cast_to<PhysicsDirectBodyState>();
+	state = Object::cast_to<PhysicsDirectBodyState>(p_state);
 #else
 	state = (PhysicsDirectBodyState *)p_state; //trust it
 #endif
@@ -842,7 +842,7 @@ void RigidBody::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_colliding_bodies"), &RigidBody::get_colliding_bodies);
 
-	BIND_VMETHOD(MethodInfo("_integrate_forces", PropertyInfo(Variant::OBJECT, "state:PhysicsDirectBodyState")));
+	BIND_VMETHOD(MethodInfo("_integrate_forces", PropertyInfo(Variant::OBJECT, "state", PROPERTY_HINT_RESOURCE_TYPE, "PhysicsDirectBodyState")));
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "mode", PROPERTY_HINT_ENUM, "Rigid,Static,Character,Kinematic"), "set_mode", "get_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "mass", PROPERTY_HINT_EXP_RANGE, "0.01,65535,0.01"), "set_mass", "get_mass");
@@ -1105,7 +1105,7 @@ Object *KinematicBody::get_collision_collider_shape(int p_collision) const {
 	ERR_FAIL_INDEX_V(p_collision, colliders.size(), NULL);
 	Object *collider = get_collision_collider(p_collision);
 	if (collider) {
-		CollisionObject *obj2d = collider->cast_to<CollisionObject>();
+		CollisionObject *obj2d = Object::cast_to<CollisionObject>(collider);
 		if (obj2d) {
 			uint32_t owner = shape_find_owner(colliders[p_collision].collider_shape);
 			return obj2d->shape_owner_get_owner(owner);

@@ -3,7 +3,7 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
 /* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
@@ -463,8 +463,8 @@ Error decode_variant(Variant &r_variant, const uint8_t *p_buffer, int p_len, int
 						obj->set(str, value);
 					}
 
-					if (obj->cast_to<Reference>()) {
-						REF ref = REF(obj->cast_to<Reference>());
+					if (Object::cast_to<Reference>(obj)) {
+						REF ref = REF(Object::cast_to<Reference>(obj));
 						r_variant = ref;
 					} else {
 						r_variant = obj;

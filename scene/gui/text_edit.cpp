@@ -3,7 +3,7 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
 /* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
@@ -27,13 +27,12 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-
 #include "text_edit.h"
+
+#include "message_queue.h"
 #include "os/input.h"
 #include "os/keyboard.h"
 #include "os/os.h"
-
-#include "message_queue.h"
 #include "project_settings.h"
 #include "scene/main/viewport.h"
 
@@ -215,8 +214,8 @@ void TextEdit::Text::_update_line_cache(int p_line) const {
 
 const Map<int, TextEdit::Text::ColorRegionInfo> &TextEdit::Text::get_color_region_info(int p_line) {
 
-	Map<int, ColorRegionInfo> *cri = NULL;
-	ERR_FAIL_INDEX_V(p_line, text.size(), *cri); //enjoy your crash
+	static Map<int, ColorRegionInfo> cri;
+	ERR_FAIL_INDEX_V(p_line, text.size(), cri);
 
 	if (text[p_line].width_cache == -1) {
 		_update_line_cache(p_line);
@@ -2115,14 +2114,14 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 				//keep indentation
 				int space_count = 0;
 				for (int i = 0; i < text[cursor.line].length(); i++) {
-					if (text[cursor.line][i] == '\t') {
+					if (text[cursor.line][i] == '\t' && cursor.column > 0) {
 						if (indent_using_spaces) {
 							ins += space_indent;
 						} else {
 							ins += "\t";
 						}
 						space_count = 0;
-					} else if (text[cursor.line][i] == ' ') {
+					} else if (text[cursor.line][i] == ' ' && cursor.column > 0) {
 						space_count++;
 
 						if (space_count == indent_size) {
@@ -2736,6 +2735,15 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 				else
 					undo();
 			} break;
+			case KEY_Y: {
+
+				if (!k->get_command()) {
+					scancode_handled = false;
+					break;
+				}
+
+				redo();
+			} break;
 			case KEY_V: {
 				if (readonly) {
 					break;
@@ -2880,6 +2888,8 @@ void TextEdit::_post_shift_selection() {
 }
 
 void TextEdit::_scroll_lines_up() {
+	scrolling = false;
+
 	// adjust the vertical scroll
 	if (get_v_scroll() > 0) {
 		set_v_scroll(get_v_scroll() - 1);
@@ -2892,6 +2902,8 @@ void TextEdit::_scroll_lines_up() {
 }
 
 void TextEdit::_scroll_lines_down() {
+	scrolling = false;
+
 	// calculate the maximum vertical scroll position
 	int max_v_scroll = get_line_count() - 1;
 	if (!scroll_past_end_of_file_enabled) {
@@ -3156,6 +3168,7 @@ int TextEdit::get_visible_rows() const {
 	return total;
 }
 void TextEdit::adjust_viewport_to_cursor() {
+	scrolling = false;
 
 	if (cursor.line_ofs > cursor.line)
 		cursor.line_ofs = cursor.line;
@@ -3176,6 +3189,11 @@ void TextEdit::adjust_viewport_to_cursor() {
 	if (cursor.line < cursor.line_ofs)
 		cursor.line_ofs = cursor.line;
 
+	if (cursor.line_ofs + visible_rows > text.size() && !scroll_past_end_of_file_enabled) {
+		cursor.line_ofs = text.size() - visible_rows;
+		v_scroll->set_value(text.size() - visible_rows);
+	}
+
 	int cursor_x = get_column_x_offset(cursor.column, text[cursor.line]);
 
 	if (cursor_x > (cursor.x_ofs + visible_width))
@@ -3195,6 +3213,7 @@ void TextEdit::adjust_viewport_to_cursor() {
 }
 
 void TextEdit::center_viewport_to_cursor() {
+	scrolling = false;
 
 	if (cursor.line_ofs > cursor.line)
 		cursor.line_ofs = cursor.line;
@@ -3311,6 +3330,10 @@ void TextEdit::cursor_set_block_mode(const bool p_enable) {
 
 bool TextEdit::cursor_is_block_mode() const {
 	return block_caret;
+}
+
+void TextEdit::_v_scroll_input() {
+	scrolling = false;
 }
 
 void TextEdit::_scroll_moved(double p_to_val) {
@@ -3643,10 +3666,10 @@ void TextEdit::cut() {
 		String clipboard = _base_get_text(selection.from_line, selection.from_column, selection.to_line, selection.to_column);
 		OS::get_singleton()->set_clipboard(clipboard);
 
-		cursor_set_line(selection.from_line);
+		_remove_text(selection.from_line, selection.from_column, selection.to_line, selection.to_column);
+		cursor_set_line(selection.from_line); // set afterwards else it causes the view to be offset
 		cursor_set_column(selection.from_column);
 
-		_remove_text(selection.from_line, selection.from_column, selection.to_line, selection.to_column);
 		selection.active = false;
 		selection.selecting_mode = Selection::MODE_NONE;
 		update();
@@ -3655,9 +3678,6 @@ void TextEdit::cut() {
 }
 
 void TextEdit::copy() {
-
-	if (!selection.active)
-		return;
 
 	if (!selection.active) {
 		String clipboard = _base_get_text(cursor.line, 0, cursor.line, text[cursor.line].length());
@@ -4312,6 +4332,7 @@ void TextEdit::_cancel_completion() {
 		return;
 
 	completion_active = false;
+	completion_forced = false;
 	update();
 }
 
@@ -4379,13 +4400,19 @@ void TextEdit::_update_completion_candidates() {
 		}
 	}
 
-	if (cursor.column > 0 && l[cursor.column - 1] == '(' && !pre_keyword && !completion_strings[0].begins_with("\"")) {
+	if (cursor.column > 0 && l[cursor.column - 1] == '(' && !pre_keyword && !completion_forced) {
 		cancel = true;
 	}
 
 	update();
 
-	if (cancel || (!pre_keyword && s == "" && (cofs == 0 || !completion_prefixes.has(String::chr(l[cofs - 1]))))) {
+	bool prev_is_prefix = false;
+	if (cofs > 0 && completion_prefixes.has(String::chr(l[cofs - 1])))
+		prev_is_prefix = true;
+	if (cofs > 1 && l[cofs - 1] == ' ' && completion_prefixes.has(String::chr(l[cofs - 2]))) //check with one space before prefix, to allow indent
+		prev_is_prefix = true;
+
+	if (cancel || (!pre_keyword && s == "" && (cofs == 0 || !prev_is_prefix))) {
 		//none to complete, cancel
 		_cancel_completion();
 		return;
@@ -4443,18 +4470,6 @@ void TextEdit::_update_completion_candidates() {
 
 	// The top of the list is the best match
 	completion_current = completion_options[0];
-
-#if 0 // even there's only one option, user still get the chance to choose using it or not
-	if (completion_options.size()==1) {
-		//one option to complete, just complete it automagically
-		_confirm_completion();
-		//insert_text_at_cursor(completion_options[0].substr(s.length(),completion_options[0].length()-s.length()));
-		_cancel_completion();
-		return;
-
-	}
-#endif
-
 	completion_enabled = true;
 }
 
@@ -4474,6 +4489,8 @@ void TextEdit::query_code_comple() {
 
 	if (ofs > 0 && (inquote || _is_completable(l[ofs - 1]) || completion_prefixes.has(String::chr(l[ofs - 1]))))
 		emit_signal("request_completion");
+	else if (ofs > 1 && l[ofs - 1] == ' ' && completion_prefixes.has(String::chr(l[ofs - 2]))) //make it work with a space too, it's good enough
+		emit_signal("request_completion");
 }
 
 void TextEdit::set_code_hint(const String &p_hint) {
@@ -4485,12 +4502,13 @@ void TextEdit::set_code_hint(const String &p_hint) {
 	update();
 }
 
-void TextEdit::code_complete(const Vector<String> &p_strings) {
+void TextEdit::code_complete(const Vector<String> &p_strings, bool p_forced) {
 
 	VisualServer::get_singleton()->canvas_item_set_z(get_canvas_item(), 1);
 	raised_from_completion = true;
 	completion_strings = p_strings;
 	completion_active = true;
+	completion_forced = p_forced;
 	completion_current = "";
 	completion_index = 0;
 	_update_completion_candidates();
@@ -4709,6 +4727,7 @@ void TextEdit::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_push_current_op"), &TextEdit::_push_current_op);
 	ClassDB::bind_method(D_METHOD("_click_selection_held"), &TextEdit::_click_selection_held);
 	ClassDB::bind_method(D_METHOD("_toggle_draw_caret"), &TextEdit::_toggle_draw_caret);
+	ClassDB::bind_method(D_METHOD("_v_scroll_input"), &TextEdit::_v_scroll_input);
 
 	BIND_ENUM_CONSTANT(SEARCH_MATCH_CASE);
 	BIND_ENUM_CONSTANT(SEARCH_WHOLE_WORDS);
@@ -4846,6 +4865,8 @@ TextEdit::TextEdit() {
 	h_scroll->connect("value_changed", this, "_scroll_moved");
 	v_scroll->connect("value_changed", this, "_scroll_moved");
 
+	v_scroll->connect("scrolling", this, "_v_scroll_input");
+
 	cursor_changed_dirty = false;
 	text_changed_dirty = false;
 
@@ -4874,24 +4895,6 @@ TextEdit::TextEdit() {
 	add_child(click_select_held);
 	click_select_held->set_wait_time(0.05);
 	click_select_held->connect("timeout", this, "_click_selection_held");
-
-#if 0
-	syntax_coloring=true;
-	keywords["void"]=Color(0.3,0.0,0.1);
-	keywords["int"]=Color(0.3,0.0,0.1);
-	keywords["function"]=Color(0.3,0.0,0.1);
-	keywords["class"]=Color(0.3,0.0,0.1);
-	keywords["extends"]=Color(0.3,0.0,0.1);
-	keywords["constructor"]=Color(0.3,0.0,0.1);
-	symbol_color=Color(0.1,0.0,0.3,1.0);
-
-	color_regions.push_back(ColorRegion("/*","*/",Color(0.4,0.6,0,4)));
-	color_regions.push_back(ColorRegion("//","",Color(0.6,0.6,0.4)));
-	color_regions.push_back(ColorRegion("\"","\"",Color(0.4,0.7,0.7)));
-	color_regions.push_back(ColorRegion("'","'",Color(0.4,0.8,0.8)));
-	color_regions.push_back(ColorRegion("#","",Color(0.2,1.0,0.2)));
-
-#endif
 
 	current_op.type = TextOperation::TYPE_NONE;
 	undo_enabled = true;

@@ -3,7 +3,7 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
 /* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
@@ -69,7 +69,6 @@
 #include "core/io/file_access_zip.h"
 #include "core/io/stream_peer_ssl.h"
 #include "core/io/stream_peer_tcp.h"
-#include "core/os/thread.h"
 #include "main/input_default.h"
 #include "performance.h"
 #include "translation.h"
@@ -886,7 +885,11 @@ error:
 	return ERR_INVALID_PARAMETER;
 }
 
-Error Main::setup2() {
+Error Main::setup2(Thread::ID p_main_tid_override) {
+
+	if (p_main_tid_override) {
+		Thread::_main_thread_id = p_main_tid_override;
+	}
 
 	OS::get_singleton()->initialize(video_mode, video_driver_idx, audio_driver_idx);
 	if (init_use_custom_pos) {
@@ -981,7 +984,7 @@ Error Main::setup2() {
 	if (bool(GLOBAL_DEF("display/window/handheld/emulate_touchscreen", false))) {
 		if (!OS::get_singleton()->has_touchscreen_ui_hint() && Input::get_singleton() && !editor) {
 			//only if no touchscreen ui hint, set emulation
-			InputDefault *id = Input::get_singleton()->cast_to<InputDefault>();
+			InputDefault *id = Object::cast_to<InputDefault>(Input::get_singleton());
 			if (id)
 				id->set_emulate_touch(true);
 		}
@@ -1181,7 +1184,7 @@ bool Main::start() {
 
 			StringName instance_type = script_res->get_instance_base_type();
 			Object *obj = ClassDB::instance(instance_type);
-			MainLoop *script_loop = obj ? obj->cast_to<MainLoop>() : NULL;
+			MainLoop *script_loop = Object::cast_to<MainLoop>(obj);
 			if (!script_loop) {
 				if (obj)
 					memdelete(obj);
@@ -1215,7 +1218,7 @@ bool Main::start() {
 				ERR_FAIL_V(false);
 			}
 
-			main_loop = ml->cast_to<MainLoop>();
+			main_loop = Object::cast_to<MainLoop>(ml);
 			if (!main_loop) {
 
 				memdelete(ml);
@@ -1227,7 +1230,7 @@ bool Main::start() {
 
 	if (main_loop->is_class("SceneTree")) {
 
-		SceneTree *sml = main_loop->cast_to<SceneTree>();
+		SceneTree *sml = Object::cast_to<SceneTree>(main_loop);
 
 #ifdef DEBUG_ENABLED
 		if (debug_collisions) {
@@ -1421,7 +1424,7 @@ bool Main::start() {
 						ERR_EXPLAIN("Cannot instance script for autoload, expected 'Node' inheritance, got: " + String(ibt));
 						ERR_CONTINUE(obj == NULL);
 
-						n = obj->cast_to<Node>();
+						n = Object::cast_to<Node>(obj);
 						n->set_script(s.get_ref_ptr());
 					}
 

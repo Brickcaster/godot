@@ -157,10 +157,8 @@ void AudioStreamPlayer2D::_notification(int p_what) {
 			int areas = space_state->intersect_point(global_pos, sr, MAX_INTERSECT_AREAS, Set<RID>(), area_mask, Physics2DDirectSpaceState::TYPE_MASK_AREA);
 
 			for (int i = 0; i < areas; i++) {
-				if (!sr[i].collider)
-					continue;
 
-				Area2D *area2d = sr[i].collider->cast_to<Area2D>();
+				Area2D *area2d = Object::cast_to<Area2D>(sr[i].collider);
 				if (!area2d)
 					continue;
 
@@ -226,6 +224,7 @@ void AudioStreamPlayer2D::_notification(int p_what) {
 		if (!active) {
 			set_fixed_process_internal(false);
 			_change_notify("playing"); //update property in editor
+			emit_signal("finished");
 		}
 	}
 }
@@ -444,6 +443,9 @@ void AudioStreamPlayer2D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "attenuation", PROPERTY_HINT_EXP_EASING), "set_attenuation", "get_attenuation");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "bus", PROPERTY_HINT_ENUM, ""), "set_bus", "get_bus");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "area_mask", PROPERTY_HINT_LAYERS_2D_PHYSICS), "set_area_mask", "get_area_mask");
+
+	ADD_SIGNAL(MethodInfo("finished"));
+
 }
 
 AudioStreamPlayer2D::AudioStreamPlayer2D() {

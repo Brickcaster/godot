@@ -3,7 +3,7 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
 /* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
@@ -143,7 +143,7 @@ PhysicsBody2D::PhysicsBody2D(Physics2DServer::BodyMode p_mode)
 void PhysicsBody2D::add_collision_exception_with(Node *p_node) {
 
 	ERR_FAIL_NULL(p_node);
-	PhysicsBody2D *physics_body = p_node->cast_to<PhysicsBody2D>();
+	PhysicsBody2D *physics_body = Object::cast_to<PhysicsBody2D>(p_node);
 	if (!physics_body) {
 		ERR_EXPLAIN("Collision exception only works between two objects of PhysicsBody type");
 	}
@@ -154,7 +154,7 @@ void PhysicsBody2D::add_collision_exception_with(Node *p_node) {
 void PhysicsBody2D::remove_collision_exception_with(Node *p_node) {
 
 	ERR_FAIL_NULL(p_node);
-	PhysicsBody2D *physics_body = p_node->cast_to<PhysicsBody2D>();
+	PhysicsBody2D *physics_body = Object::cast_to<PhysicsBody2D>(p_node);
 	if (!physics_body) {
 		ERR_EXPLAIN("Collision exception only works between two objects of PhysicsBody type");
 	}
@@ -182,29 +182,6 @@ real_t StaticBody2D::get_constant_angular_velocity() const {
 
 	return constant_angular_velocity;
 }
-#if 0
-void StaticBody2D::_update_xform() {
-
-	if (!pre_xform || !pending)
-		return;
-
-	setting=true;
-
-
-	Transform2D new_xform = get_global_transform(); //obtain the new one
-
-	set_block_transform_notify(true);
-	Physics2DServer::get_singleton()->body_set_state(get_rid(),Physics2DServer::BODY_STATE_TRANSFORM,*pre_xform); //then simulate motion!
-	set_global_transform(*pre_xform); //but restore state to previous one in both visual and physics
-	set_block_transform_notify(false);
-
-	Physics2DServer::get_singleton()->body_static_simulate_motion(get_rid(),new_xform); //then simulate motion!
-
-	setting=false;
-	pending=false;
-
-}
-#endif
 
 void StaticBody2D::set_friction(real_t p_friction) {
 
@@ -262,7 +239,7 @@ StaticBody2D::~StaticBody2D() {
 void RigidBody2D::_body_enter_tree(ObjectID p_id) {
 
 	Object *obj = ObjectDB::get_instance(p_id);
-	Node *node = obj ? obj->cast_to<Node>() : NULL;
+	Node *node = Object::cast_to<Node>(obj);
 	ERR_FAIL_COND(!node);
 
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(p_id);
@@ -285,7 +262,7 @@ void RigidBody2D::_body_enter_tree(ObjectID p_id) {
 void RigidBody2D::_body_exit_tree(ObjectID p_id) {
 
 	Object *obj = ObjectDB::get_instance(p_id);
-	Node *node = obj ? obj->cast_to<Node>() : NULL;
+	Node *node = Object::cast_to<Node>(obj);
 	ERR_FAIL_COND(!node);
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(p_id);
 	ERR_FAIL_COND(!E);
@@ -310,7 +287,7 @@ void RigidBody2D::_body_inout(int p_status, ObjectID p_instance, int p_body_shap
 	ObjectID objid = p_instance;
 
 	Object *obj = ObjectDB::get_instance(objid);
-	Node *node = obj ? obj->cast_to<Node>() : NULL;
+	Node *node = Object::cast_to<Node>(obj);
 
 	Map<ObjectID, BodyState>::Element *E = contact_monitor->body_map.find(objid);
 
@@ -393,7 +370,7 @@ void RigidBody2D::_direct_state_changed(Object *p_state) {
 //eh.. fuck
 #ifdef DEBUG_ENABLED
 
-	state = p_state->cast_to<Physics2DDirectBodyState>();
+	state = Object::cast_to<Physics2DDirectBodyState>(p_state);
 #else
 	state = (Physics2DDirectBodyState *)p_state; //trust it
 #endif
@@ -906,7 +883,7 @@ void RigidBody2D::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_colliding_bodies"), &RigidBody2D::get_colliding_bodies);
 
-	BIND_VMETHOD(MethodInfo("_integrate_forces", PropertyInfo(Variant::OBJECT, "state:Physics2DDirectBodyState")));
+	BIND_VMETHOD(MethodInfo("_integrate_forces", PropertyInfo(Variant::OBJECT, "state", PROPERTY_HINT_RESOURCE_TYPE, "Physics2DDirectBodyState")));
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "mode", PROPERTY_HINT_ENUM, "Rigid,Static,Character,Kinematic"), "set_mode", "get_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "mass", PROPERTY_HINT_EXP_RANGE, "0.01,65535,0.01"), "set_mass", "get_mass");
@@ -1171,12 +1148,10 @@ ObjectID KinematicBody2D::get_collision_collider_id(int p_collision) const {
 Object *KinematicBody2D::get_collision_collider_shape(int p_collision) const {
 	ERR_FAIL_INDEX_V(p_collision, colliders.size(), NULL);
 	Object *collider = get_collision_collider(p_collision);
-	if (collider) {
-		CollisionObject2D *obj2d = collider->cast_to<CollisionObject2D>();
-		if (obj2d) {
-			uint32_t owner = shape_find_owner(colliders[p_collision].collider_shape);
-			return obj2d->shape_owner_get_owner(owner);
-		}
+	CollisionObject2D *obj2d = Object::cast_to<CollisionObject2D>(collider);
+	if (obj2d) {
+		uint32_t owner = shape_find_owner(colliders[p_collision].collider_shape);
+		return obj2d->shape_owner_get_owner(owner);
 	}
 
 	return NULL;

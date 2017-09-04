@@ -3,7 +3,7 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
 /* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
@@ -50,7 +50,7 @@ godot_int GDAPI godot_rid_get_id(const godot_rid *p_self) {
 }
 
 void GDAPI godot_rid_new_with_resource(godot_rid *r_dest, const godot_object *p_from) {
-	const Resource *res_from = ((const Object *)p_from)->cast_to<Resource>();
+	const Resource *res_from = Object::cast_to<Resource>((Object *)p_from);
 	godot_rid_new(r_dest);
 	if (res_from) {
 		RID *dest = (RID *)r_dest;

@@ -3,7 +3,7 @@
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
-/*                    http://www.godotengine.org                         */
+/*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
 /* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
@@ -654,8 +654,8 @@ void AudioServer::_update_bus_effects(int p_bus) {
 		buses[p_bus]->channels[i].effect_instances.resize(buses[p_bus]->effects.size());
 		for (int j = 0; j < buses[p_bus]->effects.size(); j++) {
 			Ref<AudioEffectInstance> fx = buses[p_bus]->effects[j].effect->instance();
-			if (fx->cast_to<AudioEffectCompressorInstance>()) {
-				fx->cast_to<AudioEffectCompressorInstance>()->set_current_channel(i);
+			if (Object::cast_to<AudioEffectCompressorInstance>(*fx)) {
+				Object::cast_to<AudioEffectCompressorInstance>(*fx)->set_current_channel(i);
 			}
 			buses[p_bus]->channels[i].effect_instances[j] = fx;
 		}
