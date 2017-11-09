@@ -82,18 +82,18 @@ QUALIFIER vec2 kernel[17] = vec2[](
 
 const int kernel_size=11;
 
-QUALIFIER vec4 kernel[11] = vec4[](
-    vec4(0.560479,  0.0),
-    vec4(0.00471691,  -2.0),
-    vec4(0.0192831, -1.28),
-    vec4(0.03639, -0.72),
-    vec4(0.0821904,  -0.32),
-    vec4(0.0771802, -0.08),
-    vec4(0.0771802,  0.08),
-    vec4(0.0821904, 0.32),
-    vec4(0.03639, 0.72),
-    vec4(0.0192831, 1.28),
-    vec4(0.00471691,2.0)
+QUALIFIER vec2 kernel[11] = vec2[](
+    vec2(0.560479,  0.0),
+    vec2(0.00471691,  -2.0),
+    vec2(0.0192831, -1.28),
+    vec2(0.03639, -0.72),
+    vec2(0.0821904,  -0.32),
+    vec2(0.0771802, -0.08),
+    vec2(0.0771802,  0.08),
+    vec2(0.0821904, 0.32),
+    vec2(0.03639, 0.72),
+    vec2(0.0192831, 1.28),
+    vec2(0.00471691,2.0)
 );
 
 #endif //USE_11_SAMPLES
@@ -127,11 +127,15 @@ void main() {
 
 		// Fetch linear depth of current pixel:
 		float depth = texture(source_depth, uv_interp).r * 2.0 - 1.0;
+#ifdef USE_ORTHOGONAL_PROJECTION
+		depth = ((depth + (camera_z_far + camera_z_near)/(camera_z_far - camera_z_near)) * (camera_z_far - camera_z_near))/2.0;
+		float scale = unit_size; //remember depth is negative by default in OpenGL
+#else
 		depth = 2.0 * camera_z_near * camera_z_far / (camera_z_far + camera_z_near - depth * (camera_z_far - camera_z_near));
-
-
-
 		float scale = unit_size / depth; //remember depth is negative by default in OpenGL
+#endif
+
+
 
 		// Calculate the final step to fetch the surrounding pixels:
 		vec2 step = max_radius * scale * dir;
@@ -154,7 +158,12 @@ void main() {
 #ifdef ENABLE_FOLLOW_SURFACE
 			// If the difference in depth is huge, we lerp color back to "colorM":
 			float depth_cmp = texture(source_depth, offset).r *2.0 - 1.0;
+
+#ifdef USE_ORTHOGONAL_PROJECTION
+			depth_cmp = ((depth_cmp + (camera_z_far + camera_z_near)/(camera_z_far - camera_z_near)) * (camera_z_far - camera_z_near))/2.0;
+#else
 			depth_cmp = 2.0 * camera_z_near * camera_z_far / (camera_z_far + camera_z_near - depth_cmp * (camera_z_far - camera_z_near));
+#endif
 
 			float s = clamp(300.0f * scale *
 					       max_radius * abs(depth - depth_cmp),0.0,1.0);
@@ -181,4 +190,3 @@ void main() {
 		frag_color = base_color;
 	}
 }
-

@@ -696,22 +696,6 @@ void GIProbe::_plot_face(int p_idx, int p_level, int p_x, int p_y, int p_z, cons
 		p_baker->bake_cells[p_idx].normal[2] += normal_accum.z;
 		p_baker->bake_cells[p_idx].alpha += alpha;
 
-		static const Vector3 side_normals[6] = {
-			Vector3(-1, 0, 0),
-			Vector3(1, 0, 0),
-			Vector3(0, -1, 0),
-			Vector3(0, 1, 0),
-			Vector3(0, 0, -1),
-			Vector3(0, 0, 1),
-		};
-
-		/*
-		for(int i=0;i<6;i++) {
-			if (normal.dot(side_normals[i])>CMP_EPSILON) {
-				p_baker->bake_cells[p_idx].used_sides|=(1<<i);
-			}
-		}*/
-
 	} else {
 		//go down
 
@@ -1113,7 +1097,8 @@ void GIProbe::_find_meshes(Node *p_at_node, Baker *p_baker) {
 		}
 	}
 
-	if (Spatial *s = Object::cast_to<Spatial>(p_at_node)) {
+	Spatial *s = Object::cast_to<Spatial>(p_at_node);
+	if (s) {
 
 		if (s->is_visible_in_tree()) {
 
@@ -1148,6 +1133,10 @@ void GIProbe::_find_meshes(Node *p_at_node, Baker *p_baker) {
 		_find_meshes(child, p_baker);
 	}
 }
+
+GIProbe::BakeBeginFunc GIProbe::bake_begin_function = NULL;
+GIProbe::BakeStepFunc GIProbe::bake_step_function = NULL;
+GIProbe::BakeEndFunc GIProbe::bake_end_function = NULL;
 
 void GIProbe::bake(Node *p_from_node, bool p_create_visual_debug) {
 
@@ -1192,13 +1181,24 @@ void GIProbe::bake(Node *p_from_node, bool p_create_visual_debug) {
 
 	_find_meshes(p_from_node ? p_from_node : get_parent(), &baker);
 
+	if (bake_begin_function) {
+		bake_begin_function(baker.mesh_list.size() + 1);
+	}
+
 	int pmc = 0;
 
 	for (List<Baker::PlotMesh>::Element *E = baker.mesh_list.front(); E; E = E->next()) {
 
-		print_line("plotting mesh " + itos(pmc++) + "/" + itos(baker.mesh_list.size()));
+		if (bake_step_function) {
+			bake_step_function(pmc, RTR("Plotting Meshes") + " " + itos(pmc) + "/" + itos(baker.mesh_list.size()));
+		}
+
+		pmc++;
 
 		_plot_mesh(E->get().local_xform, E->get().mesh, &baker, E->get().instance_materials, E->get().override_material);
+	}
+	if (bake_step_function) {
+		bake_step_function(pmc++, RTR("Finishing Plot"));
 	}
 
 	_fixup_plot(0, 0, 0, 0, 0, &baker);
@@ -1296,6 +1296,10 @@ void GIProbe::bake(Node *p_from_node, bool p_create_visual_debug) {
 		probe_data->set_to_cell_xform(baker.to_cell_space);
 
 		set_probe_data(probe_data);
+	}
+
+	if (bake_end_function) {
+		bake_end_function();
 	}
 }
 
@@ -1493,6 +1497,7 @@ void GIProbe::_bind_methods() {
 	BIND_ENUM_CONSTANT(SUBDIV_64);
 	BIND_ENUM_CONSTANT(SUBDIV_128);
 	BIND_ENUM_CONSTANT(SUBDIV_256);
+	BIND_ENUM_CONSTANT(SUBDIV_512);
 	BIND_ENUM_CONSTANT(SUBDIV_MAX);
 }
 
@@ -1501,8 +1506,8 @@ GIProbe::GIProbe() {
 	subdiv = SUBDIV_128;
 	dynamic_range = 4;
 	energy = 1.0;
-	bias = 0.0;
-	normal_bias = 0.8;
+	bias = 1.5;
+	normal_bias = 0.0;
 	propagation = 1.0;
 	extents = Vector3(10, 10, 10);
 	color_scan_cell_width = 4;

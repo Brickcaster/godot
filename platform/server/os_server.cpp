@@ -31,7 +31,6 @@
 //#include "servers/visual/rasterizer_dummy.h"
 #include "os_server.h"
 #include "print_string.h"
-#include "servers/physics/physics_server_sw.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -62,12 +61,7 @@ void OS_Server::initialize(const VideoMode &p_desired, int p_video_driver, int p
 
 	//visual_server = memnew( VisualServerRaster(rasterizer) );
 
-	AudioDriverManager::get_driver(p_audio_driver)->set_singleton();
-
-	if (AudioDriverManager::get_driver(p_audio_driver)->init() != OK) {
-
-		ERR_PRINT("Initializing audio failed.");
-	}
+	AudioDriverManager::initialize(p_audio_driver);
 
 	sample_manager = memnew(SampleManagerMallocSW);
 	audio_server = memnew(AudioServerSW(sample_manager));
@@ -80,11 +74,6 @@ void OS_Server::initialize(const VideoMode &p_desired, int p_video_driver, int p
 	ERR_FAIL_COND(!visual_server);
 
 	visual_server->init();
-	//
-	physics_server = memnew(PhysicsServerSW);
-	physics_server->init();
-	physics_2d_server = memnew(Physics2DServerSW);
-	physics_2d_server->init();
 
 	input = memnew(InputDefault);
 
@@ -115,12 +104,6 @@ void OS_Server::finalize() {
 	visual_server->finish();
 	memdelete(visual_server);
 	//memdelete(rasterizer);
-
-	physics_server->finish();
-	memdelete(physics_server);
-
-	physics_2d_server->finish();
-	memdelete(physics_2d_server);
 
 	memdelete(input);
 
@@ -200,7 +183,7 @@ void OS_Server::move_window_to_foreground() {
 void OS_Server::set_cursor_shape(CursorShape p_shape) {
 }
 
-PowerState OS_Server::get_power_state() {
+OS::PowerState OS_Server::get_power_state() {
 	return power_manager->get_power_state();
 }
 
@@ -232,7 +215,6 @@ void OS_Server::run() {
 
 OS_Server::OS_Server() {
 
-	AudioDriverManager::add_driver(&driver_dummy);
 	//adriver here
 	grab = false;
 };

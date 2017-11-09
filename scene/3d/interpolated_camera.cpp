@@ -37,7 +37,7 @@ void InterpolatedCamera::_notification(int p_what) {
 		case NOTIFICATION_ENTER_TREE: {
 
 			if (Engine::get_singleton()->is_editor_hint() && enabled)
-				set_fixed_process(false);
+				set_physics_process(false);
 
 		} break;
 		case NOTIFICATION_PROCESS: {
@@ -55,8 +55,8 @@ void InterpolatedCamera::_notification(int p_what) {
 				Transform local_transform = get_global_transform();
 				local_transform = local_transform.interpolate_with(target_xform, delta);
 				set_global_transform(local_transform);
-
-				if (Camera *cam = Object::cast_to<Camera>(node)) {
+				Camera *cam = Object::cast_to<Camera>(node);
+				if (cam) {
 
 					if (cam->get_projection() == get_projection()) {
 

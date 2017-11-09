@@ -58,7 +58,6 @@ void Script::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("has_script_signal", "signal_name"), &Script::has_script_signal);
 
 	ClassDB::bind_method(D_METHOD("is_tool"), &Script::is_tool);
-	ClassDB::bind_method(D_METHOD("get_node_type"), &Script::get_node_type);
 }
 
 void ScriptServer::set_scripting_enabled(bool p_enabled) {
@@ -184,7 +183,6 @@ void ScriptInstance::call_multilevel(const StringName &p_method, VARIANT_ARG_DEC
 		argc++;
 	}
 
-	Variant::CallError error;
 	call_multilevel(p_method, argptr, argc);
 }
 

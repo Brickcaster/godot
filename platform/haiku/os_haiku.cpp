@@ -105,7 +105,7 @@ void OS_Haiku::initialize(const VideoMode &p_desired, int p_video_driver, int p_
 		window->SetFlags(flags);
 	}
 
-#if defined(OPENGL_ENABLED) || defined(LEGACYGL_ENABLED)
+#if defined(OPENGL_ENABLED)
 	context_gl = memnew(ContextGL_Haiku(window));
 	context_gl->initialize();
 	context_gl->make_current();
@@ -130,18 +130,7 @@ void OS_Haiku::initialize(const VideoMode &p_desired, int p_video_driver, int p_
 	window->Show();
 	visual_server->init();
 
-	physics_server = memnew(PhysicsServerSW);
-	physics_server->init();
-	physics_2d_server = memnew(Physics2DServerSW);
-	// TODO: enable multithreaded PS
-	//physics_2d_server = Physics2DServerWrapMT::init_server<Physics2DServerSW>();
-	physics_2d_server->init();
-
-	AudioDriverManager::get_driver(p_audio_driver)->set_singleton();
-
-	if (AudioDriverManager::get_driver(p_audio_driver)->init() != OK) {
-		ERR_PRINT("Initializing audio failed.");
-	}
+	AudioDriverManager::initialize(p_audio_driver);
 
 	power_manager = memnew(PowerHaiku);
 }
@@ -157,15 +146,9 @@ void OS_Haiku::finalize() {
 	memdelete(visual_server);
 	memdelete(rasterizer);
 
-	physics_server->finish();
-	memdelete(physics_server);
-
-	physics_2d_server->finish();
-	memdelete(physics_2d_server);
-
 	memdelete(input);
 
-#if defined(OPENGL_ENABLED) || defined(LEGACYGL_ENABLED)
+#if defined(OPENGL_ENABLED)
 	memdelete(context_gl);
 #endif
 }

@@ -38,8 +38,6 @@
 #include "main/input_default.h"
 #include "power_haiku.h"
 #include "servers/audio_server.h"
-#include "servers/physics_2d/physics_2d_server_sw.h"
-#include "servers/physics_server.h"
 #include "servers/visual/rasterizer.h"
 #include "servers/visual_server.h"
 
@@ -52,15 +50,13 @@ private:
 	Rasterizer *rasterizer;
 	VisualServer *visual_server;
 	VideoMode current_video_mode;
-	PhysicsServer *physics_server;
-	Physics2DServer *physics_2d_server;
 	PowerHaiku *power_manager;
 
 #ifdef MEDIA_KIT_ENABLED
 	AudioDriverMediaKit driver_media_kit;
 #endif
 
-#if defined(OPENGL_ENABLED) || defined(LEGACYGL_ENABLED)
+#if defined(OPENGL_ENABLED)
 	ContextGL_Haiku *context_gl;
 #endif
 
@@ -117,7 +113,7 @@ public:
 	virtual void get_fullscreen_mode_list(List<VideoMode> *p_list, int p_screen = 0) const;
 	virtual String get_executable_path() const;
 
-	virtual PowerState get_power_state();
+	virtual OS::PowerState get_power_state();
 	virtual int get_power_seconds_left();
 	virtual int get_power_percent_left();
 

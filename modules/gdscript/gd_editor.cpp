@@ -61,7 +61,11 @@ Ref<Script> GDScriptLanguage::get_template(const String &p_class_name, const Str
 					   "func _ready():\n" +
 					   "%TS%# Called every time the node is added to the scene.\n" +
 					   "%TS%# Initialization here\n" +
-					   "%TS%pass\n";
+					   "%TS%pass\n\n" +
+					   "#func _process(delta):\n" +
+					   "#%TS%# Called every frame. Delta is time since last frame.\n" +
+					   "#%TS%# Update game logic here.\n" +
+					   "#%TS%pass\n";
 
 	_template = _template.replace("%BASE%", p_base_class_name);
 	_template = _template.replace("%TS%", _get_indentation());
@@ -125,6 +129,11 @@ bool GDScriptLanguage::validate(const String &p_script, int &r_line_error, int &
 bool GDScriptLanguage::has_named_classes() const {
 
 	return false;
+}
+
+bool GDScriptLanguage::supports_builtin_mode() const {
+
+	return true;
 }
 
 int GDScriptLanguage::find_function(const String &p_function, const String &p_code) const {
@@ -866,7 +875,7 @@ static bool _guess_expression_type(GDCompletionContext &context, const GDParser:
 									MethodBind *mb = ClassDB::get_method(base_type, getter);
 									if (mb) {
 										PropertyInfo rt = mb->get_return_info();
-										if (rt.usage & PROPERTY_USAGE_CLASS_IS_ENUM && t == Variant::INT) {
+										if ((rt.usage & PROPERTY_USAGE_CLASS_IS_ENUM) && t == Variant::INT) {
 											r_type.enumeration = rt.class_name;
 										} else if (t == Variant::OBJECT) {
 
@@ -908,7 +917,7 @@ static bool _guess_expression_type(GDCompletionContext &context, const GDParser:
 			Variant::Operator vop = Variant::OP_MAX;
 			switch (op->op) {
 				case GDParser::OperatorNode::OP_ADD: vop = Variant::OP_ADD; break;
-				case GDParser::OperatorNode::OP_SUB: vop = Variant::OP_SUBSTRACT; break;
+				case GDParser::OperatorNode::OP_SUB: vop = Variant::OP_SUBTRACT; break;
 				case GDParser::OperatorNode::OP_MUL: vop = Variant::OP_MULTIPLY; break;
 				case GDParser::OperatorNode::OP_DIV: vop = Variant::OP_DIVIDE; break;
 				case GDParser::OperatorNode::OP_MOD: vop = Variant::OP_MODULE; break;
@@ -1051,7 +1060,7 @@ static bool _guess_identifier_type_in_block(GDCompletionContext &context, int p_
 	}
 
 	//use the last assignment, (then backwards?)
-	if (last_assign) {
+	if (last_assign && last_assign_line != p_line) {
 
 		return _guess_expression_type(context, last_assign, last_assign_line, r_type);
 	}
@@ -1185,6 +1194,8 @@ static bool _guess_identifier_type(GDCompletionContext &context, int p_line, con
 					r_type = _get_type_from_pinfo(context._class->variables[i]._export);
 					return true;
 				} else if (context._class->variables[i].expression) {
+					if (p_line <= context._class->variables[i].line)
+						return false;
 
 					bool rtype = _guess_expression_type(context, context._class->variables[i].expression, context._class->variables[i].line, r_type);
 					if (rtype && r_type.type != Variant::NIL)
@@ -1903,11 +1914,11 @@ static void _find_call_arguments(GDCompletionContext &context, const GDParser::N
 				arghint += ", ";
 			else
 				arghint += " ";
-			if (i == p_argidx || (mi.flags & METHOD_FLAG_VARARG && i > p_argidx)) {
+			if (i == p_argidx || ((mi.flags & METHOD_FLAG_VARARG) && i > p_argidx)) {
 				arghint += String::chr(0xFFFF);
 			}
 			arghint += _get_visual_datatype(mi.arguments[i]) + " " + mi.arguments[i].name;
-			if (i == p_argidx || (mi.flags & METHOD_FLAG_VARARG && i > p_argidx)) {
+			if (i == p_argidx || ((mi.flags & METHOD_FLAG_VARARG) && i > p_argidx)) {
 				arghint += String::chr(0xFFFF);
 			}
 		}
@@ -1952,7 +1963,6 @@ static void _find_call_arguments(GDCompletionContext &context, const GDParser::N
 		//make sure identifier exists...
 
 		const GDParser::IdentifierNode *id = static_cast<const GDParser::IdentifierNode *>(op->arguments[1]);
-
 		if (op->arguments[0]->type == GDParser::Node::TYPE_SELF) {
 			//self, look up
 
@@ -2021,7 +2031,7 @@ static void _find_call_arguments(GDCompletionContext &context, const GDParser::N
 						base = script->get_native();
 				} else if (nc.is_valid()) {
 
-					if (context.function && !context.function->_static) {
+					if (!(context.function && context.function->_static)) {
 
 						GDCompletionIdentifier ci;
 						ci.type = Variant::OBJECT;
@@ -2103,9 +2113,9 @@ Error GDScriptLanguage::complete_code(const String &p_code, const String &p_base
 				for (List<String>::Element *E = opts.front(); E; E = E->next()) {
 
 					String opt = E->get().strip_edges();
-					if (opt.begins_with("\"") && opt.ends_with("\"")) {
+					if (opt.is_quoted()) {
 						r_forced = true;
-						String idopt = opt.substr(1, opt.length() - 2);
+						String idopt = opt.unquote();
 						if (idopt.replace("/", "_").is_valid_identifier()) {
 							options.insert(idopt);
 						} else {

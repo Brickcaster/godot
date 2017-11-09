@@ -1699,7 +1699,7 @@ GDParser::Node *GDParser::_reduce_expression(Node *p_node, bool p_to_const) {
 					_REDUCE_BINARY(Variant::OP_ADD);
 				} break;
 				case OperatorNode::OP_SUB: {
-					_REDUCE_BINARY(Variant::OP_SUBSTRACT);
+					_REDUCE_BINARY(Variant::OP_SUBTRACT);
 				} break;
 				case OperatorNode::OP_MUL: {
 					_REDUCE_BINARY(Variant::OP_MULTIPLY);
@@ -1906,7 +1906,8 @@ GDParser::PatternNode *GDParser::_parse_pattern(bool p_static) {
 		// all the constants like strings and numbers
 		default: {
 			Node *value = _parse_and_reduce_expression(pattern, p_static);
-			if (error_set) {
+			if (!value) {
+				_set_error("Expect constant expression or variables in a pattern");
 				return NULL;
 			}
 

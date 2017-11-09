@@ -40,6 +40,7 @@
 #include "io/config_file.h"
 #include "io/http_client.h"
 #include "io/marshalls.h"
+#include "io/networked_multiplayer_peer.h"
 #include "io/packet_peer.h"
 #include "io/packet_peer_udp.h"
 #include "io/pck_packer.h"
@@ -68,6 +69,7 @@ static _Engine *_engine = NULL;
 static _ClassDB *_classdb = NULL;
 static _Marshalls *_marshalls = NULL;
 static TranslationLoaderPO *resource_format_po = NULL;
+static _JSON *_json = NULL;
 
 static IP *ip = NULL;
 
@@ -108,6 +110,8 @@ void register_core_types() {
 
 	ClassDB::register_class<Object>();
 
+	ClassDB::register_virtual_class<Script>();
+
 	ClassDB::register_class<Reference>();
 	ClassDB::register_class<WeakRef>();
 	ClassDB::register_class<Resource>();
@@ -135,6 +139,7 @@ void register_core_types() {
 	ClassDB::register_virtual_class<IP>();
 	ClassDB::register_virtual_class<PacketPeer>();
 	ClassDB::register_class<PacketPeerStream>();
+	ClassDB::register_virtual_class<NetworkedMultiplayerPeer>();
 	ClassDB::register_class<MainLoop>();
 	//ClassDB::register_type<OptimizedSaver>();
 	ClassDB::register_class<Translation>();
@@ -162,6 +167,8 @@ void register_core_types() {
 	ClassDB::register_class<AStar>();
 	ClassDB::register_class<EncodedObjectAsID>();
 
+	ClassDB::register_class<JSONParseResult>();
+
 	ip = IP::create();
 
 	_geometry = memnew(_Geometry);
@@ -172,6 +179,7 @@ void register_core_types() {
 	_engine = memnew(_Engine);
 	_classdb = memnew(_ClassDB);
 	_marshalls = memnew(_Marshalls);
+	_json = memnew(_JSON);
 }
 
 void register_core_settings() {
@@ -180,6 +188,20 @@ void register_core_settings() {
 }
 
 void register_core_singletons() {
+
+	ClassDB::register_class<ProjectSettings>();
+	ClassDB::register_virtual_class<IP>();
+	ClassDB::register_class<_Geometry>();
+	ClassDB::register_class<_ResourceLoader>();
+	ClassDB::register_class<_ResourceSaver>();
+	ClassDB::register_class<_OS>();
+	ClassDB::register_class<_Engine>();
+	ClassDB::register_class<_ClassDB>();
+	ClassDB::register_class<_Marshalls>();
+	ClassDB::register_class<TranslationServer>();
+	ClassDB::register_virtual_class<Input>();
+	ClassDB::register_class<InputMap>();
+	ClassDB::register_class<_JSON>();
 
 	ProjectSettings::get_singleton()->add_singleton(ProjectSettings::Singleton("ProjectSettings", ProjectSettings::get_singleton()));
 	ProjectSettings::get_singleton()->add_singleton(ProjectSettings::Singleton("IP", IP::get_singleton()));
@@ -193,6 +215,7 @@ void register_core_singletons() {
 	ProjectSettings::get_singleton()->add_singleton(ProjectSettings::Singleton("TranslationServer", TranslationServer::get_singleton()));
 	ProjectSettings::get_singleton()->add_singleton(ProjectSettings::Singleton("Input", Input::get_singleton()));
 	ProjectSettings::get_singleton()->add_singleton(ProjectSettings::Singleton("InputMap", InputMap::get_singleton()));
+	ProjectSettings::get_singleton()->add_singleton(ProjectSettings::Singleton("JSON", _JSON::get_singleton()));
 }
 
 void unregister_core_types() {
@@ -203,6 +226,7 @@ void unregister_core_types() {
 	memdelete(_engine);
 	memdelete(_classdb);
 	memdelete(_marshalls);
+	memdelete(_json);
 
 	memdelete(_geometry);
 

@@ -102,6 +102,14 @@ void VehicleWheel::_notification(int p_what) {
 	}
 }
 
+String VehicleWheel::get_configuration_warning() const {
+	if (!Object::cast_to<VehicleBody>(get_parent())) {
+		return TTR("VehicleWheel serves to provide a wheel system to a VehicleBody. Please use it as a child of a VehicleBody.");
+	}
+
+	return String();
+}
+
 void VehicleWheel::_update(PhysicsDirectBodyState *s) {
 
 	if (m_raycastInfo.m_isInContact)
@@ -259,6 +267,8 @@ void VehicleWheel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_roll_influence", "roll_influence"), &VehicleWheel::set_roll_influence);
 	ClassDB::bind_method(D_METHOD("get_roll_influence"), &VehicleWheel::get_roll_influence);
 
+	ClassDB::bind_method(D_METHOD("get_skidinfo"), &VehicleWheel::get_skidinfo);
+
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_as_traction"), "set_use_as_traction", "is_used_as_traction");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_as_steering"), "set_use_as_steering", "is_used_as_steering");
 	ADD_GROUP("Wheel", "wheel_");
@@ -293,6 +303,11 @@ void VehicleWheel::set_use_as_steering(bool p_enabled) {
 bool VehicleWheel::is_used_as_steering() const {
 
 	return steers;
+}
+
+float VehicleWheel::get_skidinfo() const {
+
+	return m_skidInfo;
 }
 
 VehicleWheel::VehicleWheel() {
