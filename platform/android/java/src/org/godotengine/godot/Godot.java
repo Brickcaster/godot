@@ -221,6 +221,7 @@ public class Godot extends Activity implements SensorEventListener, IDownloaderC
 	private Sensor mAccelerometer;
 	private Sensor mMagnetometer;
 	private Sensor mGyroscope;
+	private Sensor mGPS;
 
 	public FrameLayout layout;
 	public RelativeLayout adLayout;
@@ -439,6 +440,8 @@ public class Godot extends Activity implements SensorEventListener, IDownloaderC
 		mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_GAME);
 		mGyroscope = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 		mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_GAME);
+		mGPS = mSensorManager.getDefaultSensor(Sensor.TYPE_GPS); // TYPE_GPS does not exist.
+		mSensorManager.registerListener(this, mGPS, SensorManager.SENSOR_DELAY_GAME)
 
 		GodotLib.initialize(this, io.needsReloadHooks(), getAssets(), use_apk_expansion);
 
@@ -669,6 +672,7 @@ public class Godot extends Activity implements SensorEventListener, IDownloaderC
 		mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_GAME);
 		mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_GAME);
 		mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_GAME);
+		mSensorManager.registerListener(this, mGPS, SensorManager.SENSOR_DELAY_GAME);
 
 		if(use_immersive && Build.VERSION.SDK_INT >= 19.0){ // check if the application runs on an android 4.4+
 			Window window = getWindow();
@@ -741,6 +745,9 @@ public class Godot extends Activity implements SensorEventListener, IDownloaderC
 					}
 					if (typeOfSensor == Sensor.TYPE_GYROSCOPE) {
 						GodotLib.gyroscope(x,y,z);
+					}
+					if (typeOfSensor == Sensor.TYPE_GPS) {
+						GodotLib.gps(x, y, z);
 					}
 				}
 			});

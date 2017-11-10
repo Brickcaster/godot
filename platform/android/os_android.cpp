@@ -506,6 +506,11 @@ void OS_Android::process_gyroscope(const Vector3 &p_gyroscope) {
 	input->set_gyroscope(p_gyroscope);
 }
 
+void OS_Android::process_gps(const Vector2 &p_gps) {
+
+	input->set_gps(p_gps);
+}
+
 bool OS_Android::has_touchscreen_ui_hint() const {
 
 	return true;

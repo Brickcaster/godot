@@ -246,6 +246,12 @@ Vector3 InputDefault::get_gyroscope() const {
 	return gyroscope;
 }
 
+Vector2 InputDefault::get_gps() const {
+
+	_THREAD_SAFE_METHOD_
+	return gps;
+}
+
 void InputDefault::parse_input_event(const Ref<InputEvent> &p_event) {
 
 	_THREAD_SAFE_METHOD_
@@ -392,6 +398,13 @@ void InputDefault::set_gyroscope(const Vector3 &p_gyroscope) {
 	_THREAD_SAFE_METHOD_
 
 	gyroscope = p_gyroscope;
+}
+
+void InputDefault::set_gps(const Vector2 &p_gps) {
+
+	_THREAD_SAFE_METHOD_
+
+		gps = p_gps;
 }
 
 void InputDefault::set_main_loop(MainLoop *p_main_loop) {
